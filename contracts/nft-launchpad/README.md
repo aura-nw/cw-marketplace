@@ -9,8 +9,6 @@ The launchpad needs to satisfy the following conditions:
     - **public mint**: anyone with a wallet can mint
     - **whitelist mint**: only whitelisted wallets can mint
     - **randomly mint:** mint a NFT randomly from a list of predefined NFTs.
-    - **reserved mint:** different whitelisted tiers mint a from different pools of predefined NFTs.
-    - **reveal**: the content of NFTs are revealed after minting done.
     - **scheduled mint phase:** different whitelists mint, public mint (*mint phase*) happens in a scheduled timeline.
 
 ## Proposed Solution
@@ -105,5 +103,15 @@ pub struct PhaseConfigResponse {
     pub total_supply: u64,
     pub max_nfts_per_address: u64,
     pub price: u128,
+}
+```
+
+`Mintable{user: String}` - Query the number of remaining nfts that `user` can mint in all phases of launchpad.
+
+The response of this query is a vector of `MintableResponse`:
+```rust
+pub struct MintableResponse {
+    pub phase_id: u64,
+    pub remaining_nfts: u64,
 }
 ```

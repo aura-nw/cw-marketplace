@@ -41,6 +41,7 @@ pub struct PhaseConfigResponse {
     pub total_supply: u64,
     pub max_nfts_per_address: u64,
     pub price: u128,
+    pub is_public: bool,
 }
 
 #[cw_serde]

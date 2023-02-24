@@ -158,8 +158,9 @@ mod tests {
         use cw721::TokensResponse;
 
         use crate::{
+            msg::MintableResponse,
             state::{PhaseConfigResponse, PhaseData},
-            testing_config::env::{NATIVE_DENOM, USER_1},
+            testing_config::env::{NATIVE_DENOM, USER_1, USER_2},
         };
 
         use super::*;
@@ -1289,9 +1290,9 @@ mod tests {
                     start_time: app.block_info().time.plus_seconds(1200),
                     end_time: app.block_info().time.plus_seconds(2000),
                     max_supply: Some(1000),
-                    max_nfts_per_address: 2,
+                    max_nfts_per_address: 1,
                     price: 500000,
-                    is_public: false,
+                    is_public: true,
                 },
             };
 
@@ -1318,6 +1319,54 @@ mod tests {
                 &[],
             );
             assert!(res.is_ok());
+
+            // query mintable of user 1
+            let res: Vec<MintableResponse> = app
+                .wrap()
+                .query_wasm_smart(
+                    Addr::unchecked(launchpad_address.clone()),
+                    &QueryMsg::Mintable {
+                        user: USER_1.to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                res,
+                vec![
+                    MintableResponse {
+                        phase_id: 1,
+                        remaining_nfts: 2
+                    },
+                    MintableResponse {
+                        phase_id: 2,
+                        remaining_nfts: 1,
+                    },
+                ]
+            );
+
+            // query mintable of user 2
+            let res: Vec<MintableResponse> = app
+                .wrap()
+                .query_wasm_smart(
+                    Addr::unchecked(launchpad_address.clone()),
+                    &QueryMsg::Mintable {
+                        user: USER_2.to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                res,
+                vec![
+                    MintableResponse {
+                        phase_id: 1,
+                        remaining_nfts: 0
+                    },
+                    MintableResponse {
+                        phase_id: 2,
+                        remaining_nfts: 1,
+                    },
+                ]
+            );
 
             // USER_1 try to mint nft
             // prepare execute msg for minting nft
@@ -1388,6 +1437,30 @@ mod tests {
                 }],
             );
             assert!(res.is_ok());
+
+            // query mintable of user 1
+            let res: Vec<MintableResponse> = app
+                .wrap()
+                .query_wasm_smart(
+                    Addr::unchecked(launchpad_address.clone()),
+                    &QueryMsg::Mintable {
+                        user: USER_1.to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                res,
+                vec![
+                    MintableResponse {
+                        phase_id: 1,
+                        remaining_nfts: 1
+                    },
+                    MintableResponse {
+                        phase_id: 2,
+                        remaining_nfts: 1,
+                    },
+                ]
+            );
 
             // query the nft info from collection contract in launchpad info
             // prepare query msg for getting nft info
@@ -2211,8 +2284,8 @@ mod tests {
 
             // assert tpken_ids array correct
             let expected_ids = [
-                "12", "7", "15", "11", "20", "9", "13", "8", "10", "2", "3", "19", "6", "16", "1",
-                "18", "17", "4", "14", "5",
+                "16", "17", "11", "5", "4", "1", "6", "7", "10", "8", "2", "20", "3", "9", "12",
+                "13", "15", "14", "19", "18",
             ]
             .to_vec();
             assert_eq!(token_ids, expected_ids);

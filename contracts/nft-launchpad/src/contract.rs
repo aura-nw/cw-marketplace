@@ -15,7 +15,7 @@ use cw_utils::parse_reply_instantiate_data;
 use nois::{ints_in_range, randomness_from_str, sub_randomness_with_key};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
 use crate::state::{
     Config, LaunchpadInfo, PhaseConfig, PhaseConfigResponse, PhaseData, CONFIG, LAUNCHPAD_INFO,
     PHASE_CONFIGS, PHASE_CONFIGS_RESPONSE, RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
@@ -801,6 +801,7 @@ fn update_phases_config_response(deps: DepsMut) -> Result<Response, ContractErro
             total_supply: phase_config.total_supply,
             max_nfts_per_address: phase_config.max_nfts_per_address,
             price: phase_config.price,
+            is_public: phase_config.is_public,
         });
     }
 
@@ -833,10 +834,11 @@ fn is_launchpad_started(storage: &dyn Storage, env: Env) -> bool {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetLaunchpadInfo {} => to_binary(&query_launchpad_info(_deps)?),
-        QueryMsg::GetAllPhaseConfigs {} => to_binary(&query_all_phase_configs(_deps)?),
+        QueryMsg::GetLaunchpadInfo {} => to_binary(&query_launchpad_info(deps)?),
+        QueryMsg::GetAllPhaseConfigs {} => to_binary(&query_all_phase_configs(deps)?),
+        QueryMsg::Mintable { user } => to_binary(&query_mintable(deps, Addr::unchecked(user))?),
     }
 }
 
@@ -848,6 +850,36 @@ pub fn query_launchpad_info(deps: Deps) -> StdResult<LaunchpadInfo> {
 pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>> {
     let phase_configs_response = PHASE_CONFIGS_RESPONSE.load(deps.storage)?;
     Ok(phase_configs_response)
+}
+
+pub fn query_mintable(deps: Deps, user: Addr) -> StdResult<Vec<MintableResponse>> {
+    // load the information of phase configs
+    let phase_configs = PHASE_CONFIGS_RESPONSE.load(deps.storage)?;
+
+    // create an empty mintable response vector
+    let mut mintable_response: Vec<MintableResponse> = vec![];
+
+    for phase_config in phase_configs {
+        // load the number of minted nfts of the user from WHITELIST base of the phase_id and the address of user
+        let minted_nfts = if WHITELIST.has(deps.storage, (phase_config.phase_id, user.clone())) {
+            WHITELIST
+                .load(deps.storage, (phase_config.phase_id, user.clone()))
+                .unwrap()
+        } else if phase_config.is_public {
+            0
+        } else {
+            phase_config.max_nfts_per_address
+        };
+
+        let mintable = phase_config.max_nfts_per_address - minted_nfts;
+
+        mintable_response.push(MintableResponse {
+            phase_id: phase_config.phase_id,
+            remaining_nfts: mintable,
+        });
+    }
+
+    Ok(mintable_response)
 }
 
 /// This just stores the result for future query

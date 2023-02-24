@@ -51,6 +51,14 @@ pub enum QueryMsg {
     GetLaunchpadInfo {},
     #[returns(Vec<PhaseConfigResponse>)]
     GetAllPhaseConfigs {},
+    #[returns(Vec<MintableResponse>)]
+    Mintable { user: String },
+}
+
+#[cw_serde]
+pub struct MintableResponse {
+    pub phase_id: u64,
+    pub remaining_nfts: u64,
 }
 
 #[cw_serde]
