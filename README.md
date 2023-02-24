@@ -25,6 +25,98 @@ This contract supports 2 functions:
 
 For better user experience, we do not lock users' NFTs when they are listed on sale. This indeed can lead to issues with invalid listings. We will look in to ways to resolve those issues without compromise on UX. For the same reason, we also do not lock users' token when they make offers with those token.
 
+```mermaid
+sequenceDiagram
+
+participant U as User
+Participant M as Marketplace
+participant C as Collection
+
+U ->>+ M: list_nft(nft, price)
+M ->>+ C: check_owner(user, nft)
+C -->>- M: owner
+alt user is owner
+  M ->> M: create_listing(nft, price)
+  M -->>  U: listing
+else user is not owner
+  M -->>- U: tx failed
+end
+```
+User lists NFT in marketplace for sale
+
+```mermaid
+sequenceDiagram
+
+participant U as User
+participant M as Marketplace
+participant C as Collection
+participant B as Bank
+
+U ->>+ M: buy(listing)
+alt can_buy(user, listing)
+  M ->>+ C: transfer(listing.nft, user)
+  C -->>- M: result
+  M ->>+ B: transfer(listing.price, listing.seller)
+  B -->>- M: result
+  alt all transfers succeeded
+    M -->> U: tx succeeded
+  else
+    M -->> U: tx failed
+  end
+else invalid request
+  M -->>- U: tx failed
+end
+```
+User buys a listing in marketplace
+
+```mermaid
+sequenceDiagram
+
+participant U as User
+participant M as Marketplace
+participant C as Collection
+participant B as Bidding Token
+
+U ->>+ M: make_offer(nft, price)
+M ->>+ C: check_owner(user, nft)
+C -->>- M: owner
+M ->>+ B: get_balance(user)
+B -->>- M: user_balance
+alt user == owner AND user_balance >= price
+  M ->> M: create_offer(user, nft, price)
+  M -->> U: offer
+else invalid offer
+  M -->>- U: tx failed
+end
+```
+User makes offer on a NFT on marketplace
+
+```mermaid
+sequenceDiagram
+
+participant U as User
+participant M as Marketplace
+participant C as Collection
+participant B as Bidding Token
+
+U ->>+ M: accept(offer)
+alt is_valid(offer, user)
+  M ->>+ C: transfer(offer.nft, offer.offerer)
+  C -->>- M: result
+  M ->>+ B: transfer(offer.price, offer.offerer, user.address)
+  B -->>- M: result
+  alt all transfers succeeded
+    M ->> M: remove_any_listing(offer.nft)
+    M -->> U: tx succeeded
+  else any transfer failed
+    M -->> U: tx failed
+  end
+else not valid
+  M -->>- U: tx failed
+end
+```
+User accepts an offer
+
 ### Launchpad contract
 
 ```mermaid
