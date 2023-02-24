@@ -1,0 +1,61 @@
+[package]
+name = "nft-launchpad"
+version = "0.1.0"
+authors = ["hoanm <mr.nmh175@gmail.com>"]
+edition = "2021"
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[package.metadata.scripts]
+optimize = """docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/rust-optimizer:0.12.9
+"""
+
+[dependencies]
+cosmwasm-std = "1.1.9"
+cosmwasm-storage = "1.1.9"
+cw-storage-plus = "1.0.1"
+cw2 = "1.0.1"
+thiserror = { version = "1.0.37" }
+cw721 = "0.16.0"
+cw721-base = { version = "0.16.0", features = ["library"] }
+cw2981-royalties = { path = "../cw2981-royalties", version = "0.15.0", features = ["library",]}
+serde_json = "1.0.89"
+cw-utils = "1.0.0"
+cosmwasm-schema = "1.1.9"
+getrandom = {version = "0.2.7", default-features = false, features = ["js"]}
+cw20 = "1.0.1"
+cw20-base = { version = "1.0.1", features = ["library"] }
+semver = "1"
+nois = "0.6.0"
+
+[dev-dependencies]
+cw-multi-test = "0.16.1"
