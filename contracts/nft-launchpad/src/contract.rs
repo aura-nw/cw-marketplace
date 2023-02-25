@@ -3,8 +3,8 @@ use std::vec;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response,
-    StdResult, Storage, SubMsg, Timestamp, WasmMsg,
+    coin, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
+    Response, StdResult, Storage, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw2981_royalties::MintMsg;
@@ -94,6 +94,40 @@ pub fn instantiate(
         }))
 }
 
+/// This just stores the result for future query
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
+    let reply = parse_reply_instantiate_data(msg).unwrap();
+
+    // create a dummy phase config
+    let phase_config = PhaseConfig {
+        previous_phase_id: None,
+        next_phase_id: None,
+        start_time: env.block.time,
+        end_time: env.block.time.plus_nanos(1), // start_time < end_time
+        max_supply: Some(0),
+        total_supply: 0,
+        max_nfts_per_address: 0,
+        price: coin(0, "uaura"),
+        is_public: false,
+    };
+
+    // store the dummy phase config with the phase id 0
+    PHASE_CONFIGS.save(deps.storage, 0, &phase_config)?;
+
+    // load the launchpad info
+    let mut launchpad_info = LAUNCHPAD_INFO.load(deps.storage).unwrap();
+    launchpad_info.collection_address = deps.api.addr_validate(&reply.contract_address)?;
+
+    // store the address of the cw2981 collection contract
+    LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("action", "instantiate_collection"),
+        ("collection_address", &reply.contract_address),
+    ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
@@ -123,12 +157,12 @@ pub fn execute(
         ExecuteMsg::RemoveMintPhase { phase_id } => remove_mint_phase(deps, env, info, phase_id),
         ExecuteMsg::AddWhitelist {
             phase_id,
-            whitelist,
-        } => add_whitelist(deps, env, info, phase_id, whitelist),
+            whitelists,
+        } => add_whitelist(deps, env, info, phase_id, whitelists),
         ExecuteMsg::RemoveWhitelist {
             phase_id,
-            whitelist,
-        } => remove_whitelist(deps, env, info, phase_id, whitelist),
+            addresses,
+        } => remove_whitelist(deps, env, info, phase_id, addresses),
         ExecuteMsg::Mint { phase_id, amount } => mint(deps, env, info, phase_id, amount),
         ExecuteMsg::ActivateLaunchpad {} => active_launchpad(deps, info),
         ExecuteMsg::DeactivateLaunchpad {} => deactive_launchpad(deps, info),
@@ -163,9 +197,58 @@ fn add_mint_phase(
     launchpad_info.last_issued_id = valid_phase_id;
     LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
 
-    // match the previous_phase_id none or not
+    // match the after_phase_id none or not
     match after_phase_id {
-        // if the previous_phase_id is none, then add the phase_data to the last item of the phase_configs
+        // if the after_phase_id is not none, then this phase should be added to the middle of the phase_configs
+        Some(after_phase_id) => {
+            // get the previous_phase_config of new phase
+            let mut previous_phase_config = PHASE_CONFIGS.load(deps.storage, after_phase_id)?;
+
+            // get the next_phase_id of the previous_phase_config
+            let next_phase_id = previous_phase_config.next_phase_id;
+
+            // check the time of phase_data is valid
+            if !verify_phase_time(
+                &deps,
+                env,
+                Some(after_phase_id),
+                next_phase_id,
+                phase_data.start_time,
+                phase_data.end_time,
+            ) {
+                return Err(ContractError::InvalidPhaseTime {});
+            }
+
+            // the new phase_config is constructed from the phase_data,
+            // its previous_phase_id is after_phase_id, next_phase_id is next_phase_id the of previous phase
+            // and the key of item is the valid_phase_id
+            let phase_config_data = PhaseConfig {
+                previous_phase_id: Some(after_phase_id),
+                next_phase_id: previous_phase_config.next_phase_id,
+                start_time: phase_data.start_time,
+                end_time: phase_data.end_time,
+                max_supply: phase_data.max_supply,
+                total_supply: 0,
+                max_nfts_per_address: phase_data.max_nfts_per_address,
+                price: phase_data.price,
+                is_public: phase_data.is_public,
+            };
+            PHASE_CONFIGS.save(deps.storage, valid_phase_id, &phase_config_data)?;
+
+            // update the next_phase_id of the previous_phase_config
+            previous_phase_config.next_phase_id = Some(valid_phase_id);
+            PHASE_CONFIGS.save(deps.storage, after_phase_id, &previous_phase_config)?;
+
+            // if the next_phase_id of the phase_config is none, then update the last_phase_id of the launchpad_info
+            if phase_config_data.next_phase_id.is_none() {
+                let mut launchpad_info = LAUNCHPAD_INFO.load(deps.storage)?;
+                launchpad_info.last_phase_id = valid_phase_id;
+                LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
+            }
+            // update the phase_configs_response
+            update_phases_config_response(deps)?;
+        }
+        // if the after_phase_id is none, then add the phase_data to the last item of the phase_configs
         None => {
             // get the last_phase_id
             let last_phase_id = LAUNCHPAD_INFO.load(deps.storage)?.last_phase_id;
@@ -208,55 +291,6 @@ fn add_mint_phase(
             launchpad_info.last_phase_id = valid_phase_id;
             LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
 
-            // update the phase_configs_response
-            update_phases_config_response(deps)?;
-        }
-        // if the previous_phase_id is not none, then this phase should be added to the middle of the phase_configs
-        Some(previous_phase_id) => {
-            // get the previous_phase_config
-            let mut previous_phase_config = PHASE_CONFIGS.load(deps.storage, previous_phase_id)?;
-
-            // get the next_phase_id of the previous_phase_config
-            let next_phase_id = previous_phase_config.next_phase_id;
-
-            // check the time of phase_data is valid
-            if !verify_phase_time(
-                &deps,
-                env,
-                Some(previous_phase_id),
-                next_phase_id,
-                phase_data.start_time,
-                phase_data.end_time,
-            ) {
-                return Err(ContractError::InvalidPhaseTime {});
-            }
-
-            // the phase_config is constructed from the phase_data,
-            // its previous_phase_id is previous_phase_id, next_phase_id is next_phase_id the of previous phase
-            // and the key of item is the valid_phase_id
-            let phase_config_data = PhaseConfig {
-                previous_phase_id: Some(previous_phase_id),
-                next_phase_id: previous_phase_config.next_phase_id,
-                start_time: phase_data.start_time,
-                end_time: phase_data.end_time,
-                max_supply: phase_data.max_supply,
-                total_supply: 0,
-                max_nfts_per_address: phase_data.max_nfts_per_address,
-                price: phase_data.price,
-                is_public: phase_data.is_public,
-            };
-            PHASE_CONFIGS.save(deps.storage, valid_phase_id, &phase_config_data)?;
-
-            // update the next_phase_id of the previous_phase_config
-            previous_phase_config.next_phase_id = Some(valid_phase_id);
-            PHASE_CONFIGS.save(deps.storage, previous_phase_id, &previous_phase_config)?;
-
-            // if the next_phase_id of the phase_config is none, then update the last_phase_id of the launchpad_info
-            if phase_config_data.next_phase_id.is_none() {
-                let mut launchpad_info = LAUNCHPAD_INFO.load(deps.storage)?;
-                launchpad_info.last_phase_id = valid_phase_id;
-                LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
-            }
             // update the phase_configs_response
             update_phases_config_response(deps)?;
         }
@@ -315,7 +349,7 @@ pub fn update_mint_phase(
             end_time: phase_data.end_time,
             max_supply: phase_data.max_supply,
             max_nfts_per_address: phase_data.max_nfts_per_address,
-            price: phase_data.price,
+            price: phase_data.price.clone(),
             is_public: phase_data.is_public,
             ..phase_config
         },
@@ -334,7 +368,7 @@ pub fn update_mint_phase(
             "max_nfts_per_address",
             &phase_data.max_nfts_per_address.to_string(),
         ),
-        ("price", &phase_data.price.to_string()),
+        ("price_denom", &phase_data.price.denom),
     ]))
 }
 
@@ -436,7 +470,7 @@ pub fn add_whitelist(
     _env: Env,
     info: MessageInfo,
     phase_id: u64,
-    whitelist: Vec<String>,
+    whitelists: Vec<String>,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
     if is_launchpad_started(deps.storage) {
@@ -450,7 +484,7 @@ pub fn add_whitelist(
     }
 
     // for each address in the whitelist input, add the address to the whitelist of the phase_id
-    for address in whitelist {
+    for address in whitelists {
         // if the address is not in WHITELIST, then save it to the WHITELIST
         if !WHITELIST.has(deps.storage, (phase_id, Addr::unchecked(address.clone()))) {
             WHITELIST.save(
@@ -469,7 +503,7 @@ pub fn remove_whitelist(
     _env: Env,
     info: MessageInfo,
     phase_id: u64,
-    whitelist: Vec<String>,
+    addresses: Vec<String>,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
     if is_launchpad_started(deps.storage) {
@@ -483,7 +517,7 @@ pub fn remove_whitelist(
     }
 
     // for each address in the whitelist input, remove the address from the whitelist of the phase_id
-    for address in whitelist {
+    for address in addresses {
         // if the address is in the WHITELIST, then remove it from the WHITELIST
         if WHITELIST.has(deps.storage, (phase_id, Addr::unchecked(address.clone()))) {
             WHITELIST.remove(deps.storage, (phase_id, Addr::unchecked(address)));
@@ -500,9 +534,9 @@ pub fn mint(
     phase_id: u64,
     amount: Option<u64>,
 ) -> Result<Response, ContractError> {
-    let amount = amount.unwrap_or(1);
+    let amount_nfts = amount.unwrap_or(1);
 
-    if amount > 10 {
+    if amount_nfts > 10 {
         return Err(ContractError::TooManyNfts {});
     }
 
@@ -517,8 +551,13 @@ pub fn mint(
     // load the phase_config of the phase_id
     let mut phase_config: PhaseConfig = PHASE_CONFIGS.load(deps.storage, phase_id).unwrap();
 
+    // mayload the minted_nfts of sender
+    let minted_nfts_result = WHITELIST
+        .may_load(deps.storage, (phase_id, info.sender.clone()))
+        .unwrap();
+
     // check if the phase is not public and the sender is not in the whitelist of the phase_id, then return error
-    if !phase_config.is_public && !WHITELIST.has(deps.storage, (phase_id, info.sender.clone())) {
+    if !phase_config.is_public && minted_nfts_result.is_none() {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -528,61 +567,60 @@ pub fn mint(
     }
 
     // check if the total supply of the phase_id is greater than or equal to the max_supply, then return error
-    if launchpad_info.total_supply + amount > launchpad_info.max_supply
+    if launchpad_info.total_supply + amount_nfts > launchpad_info.max_supply
         || (phase_config.max_supply.is_some()
-            && phase_config.total_supply + amount > phase_config.max_supply.unwrap())
+            && phase_config.total_supply + amount_nfts > phase_config.max_supply.unwrap())
     {
         return Err(ContractError::MaxSupplyReached {});
     } else {
         // increase the total supply of the phase_id and the launchpad
-        phase_config.total_supply += amount;
+        phase_config.total_supply += amount_nfts;
         PHASE_CONFIGS.save(deps.storage, phase_id, &phase_config)?;
 
-        launchpad_info.total_supply += amount;
+        launchpad_info.total_supply += amount_nfts;
         LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
     }
 
-    // if this phase is public, then we must check if the sender is added to the whitelist of the phase_id
-    if phase_config.is_public {
-        // if the sender is not in the whitelist of the phase_id, then add it to the whitelist
-        if !WHITELIST.has(deps.storage, (phase_id, info.sender.clone())) {
-            WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &0)?;
-        }
-    }
+    let mut minted_nfts = minted_nfts_result.unwrap_or(0u64);
 
     // check if the number of minted NFTs of the sender is greater than or equal to the max_mint of the phase_id, then return error
-    let mut minted_nfts = WHITELIST
-        .load(deps.storage, (phase_id, info.sender.clone()))
-        .unwrap();
-    if minted_nfts + amount > phase_config.max_nfts_per_address {
+
+    if minted_nfts + amount_nfts > phase_config.max_nfts_per_address {
         return Err(ContractError::UserMintedTooMuchNfts {});
     } else {
         // increase the number of minted NFTs of the sender
-        minted_nfts += amount;
+        minted_nfts += amount_nfts;
         WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
     }
 
     // check if the funds is not enough, then return error
+    let price = phase_config.price;
     if info.funds.len() != 1
-        || info.funds[0].amount < (phase_config.price * (amount as u128)).into()
+        || info.funds[0].denom != price.denom
+        || info.funds[0].amount
+            < price
+                .amount
+                .checked_mul(Uint128::from(amount_nfts))
+                .unwrap()
     {
         return Err(ContractError::NotEnoughFunds {});
     }
 
+    // get current time
+    let current_time = env.block.time;
+
+    // get the contract address of the NFT contract from launchpad info
+    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage)?;
+
     // mint NFT(s) for the sender
     let mut res: Response = Response::new();
-    for _ in 0..amount {
-        // get current time
-        let current_time = env.block.time;
+    for _ in 0..amount_nfts {
         // generate random token_id
         let token_id =
             generate_random_token_id(deps.storage, current_time, info.sender.to_string()).unwrap();
 
         // get the token_uri based on the token_id
-        let token_uri = get_token_uri(deps.as_ref(), token_id.clone());
-
-        // get the contract address of the NFT contract from launchpad info
-        let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage)?;
+        let token_uri = get_token_uri(deps.as_ref(), &token_id);
 
         // create mint message NFT for the sender
         let mint_msg = WasmMsg::Execute {
@@ -603,7 +641,7 @@ pub fn mint(
         ("action", "launchpad_mint"),
         ("owner", info.sender.as_ref()),
         ("phase_id", &phase_id.to_string()),
-        ("amount", &amount.to_string()),
+        ("amount", &amount_nfts.to_string()),
     ]))
 }
 
@@ -722,7 +760,7 @@ fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdRe
     Ok(token_id.to_string())
 }
 
-fn get_token_uri(deps: Deps, token_id: String) -> String {
+fn get_token_uri(deps: Deps, token_id: &str) -> String {
     // get the uri_prefix from launchpad info
     let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage).unwrap();
     let uri_prefix = launchpad_info.uri_prefix;
@@ -792,7 +830,7 @@ fn verify_phase_time(
     true
 }
 
-fn update_phases_config_response(deps: DepsMut) -> Result<Response, ContractError> {
+fn update_phases_config_response(deps: DepsMut) -> StdResult<()> {
     // load the last_phase_id
     let last_phase_id = LAUNCHPAD_INFO.load(deps.storage).unwrap().last_phase_id;
 
@@ -828,7 +866,7 @@ fn update_phases_config_response(deps: DepsMut) -> Result<Response, ContractErro
     // update the PHASE_CONFIGS_RESPONSE
     PHASE_CONFIGS_RESPONSE.save(deps.storage, &phase_configs_response)?;
 
-    Ok(Response::new().add_attributes([("action", "update_phases_config_response")]))
+    Ok(())
 }
 
 // we need a function to check when the launchpad started
@@ -886,38 +924,4 @@ pub fn query_mintable(deps: Deps, user: Addr) -> StdResult<Vec<MintableResponse>
     }
 
     Ok(mintable_response)
-}
-
-/// This just stores the result for future query
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
-    let reply = parse_reply_instantiate_data(msg).unwrap();
-
-    // create a dummy phase config
-    let phase_config = PhaseConfig {
-        previous_phase_id: None,
-        next_phase_id: None,
-        start_time: env.block.time,
-        end_time: env.block.time.plus_nanos(1), // start_time < end_time
-        max_supply: Some(0),
-        total_supply: 0,
-        max_nfts_per_address: 0,
-        price: 0,
-        is_public: false,
-    };
-
-    // store the dummy phase config with the phase id 0
-    PHASE_CONFIGS.save(deps.storage, 0, &phase_config)?;
-
-    // load the launchpad info
-    let mut launchpad_info = LAUNCHPAD_INFO.load(deps.storage).unwrap();
-    launchpad_info.collection_address = deps.api.addr_validate(&reply.contract_address)?;
-
-    // store the address of the cw2981 collection contract
-    LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
-
-    Ok(Response::new().add_attributes(vec![
-        ("action", "instantiate_collection"),
-        ("collection_address", &reply.contract_address),
-    ]))
 }

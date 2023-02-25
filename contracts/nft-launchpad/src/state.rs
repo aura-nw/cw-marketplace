@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Timestamp};
+use cosmwasm_std::{Addr, Coin, Timestamp};
 use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
@@ -15,7 +15,7 @@ pub struct PhaseData {
     pub end_time: Timestamp,
     pub max_supply: Option<u64>,
     pub max_nfts_per_address: u64,
-    pub price: u128,
+    pub price: Coin,
     pub is_public: bool,
 }
 
@@ -28,7 +28,7 @@ pub struct PhaseConfig {
     pub max_supply: Option<u64>,
     pub total_supply: u64,
     pub max_nfts_per_address: u64,
-    pub price: u128,
+    pub price: Coin,
     pub is_public: bool,
 }
 
@@ -40,7 +40,7 @@ pub struct PhaseConfigResponse {
     pub max_supply: Option<u64>,
     pub total_supply: u64,
     pub max_nfts_per_address: u64,
-    pub price: u128,
+    pub price: Coin,
     pub is_public: bool,
 }
 
@@ -53,7 +53,7 @@ pub struct LaunchpadInfo {
     pub first_phase_id: u64,
     pub last_phase_id: u64,
     pub last_issued_id: u64, // for the unique id of phases
-    pub is_active: bool,     // maybe we want to pause the launchpad for some reason
+    pub is_active: bool,     // admin can update phases when launchpad is not active only
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

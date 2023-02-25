@@ -26,11 +26,11 @@ pub enum ExecuteMsg {
     },
     AddWhitelist {
         phase_id: u64,
-        whitelist: Vec<String>,
+        whitelists: Vec<String>,
     },
     RemoveWhitelist {
         phase_id: u64,
-        whitelist: Vec<String>,
+        addresses: Vec<String>,
     },
     DeactivateLaunchpad {},
     ActivateLaunchpad {},

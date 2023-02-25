@@ -40,7 +40,7 @@ There are 7 messages for administrative management purpose and can be called by 
 - `DeactivateLaunchpad`
 - `ActivateLaunchpad`
 
-The first 5 messages can be executed **before** launchpad starting. The last 2 messages are used to pause and unpause the launchpad.
+The first 5 messages can be executed **only** when status of launchpad is `inactive`. By default, the status of launchpad after instantiation is `inactive`. To `active` the launchpad , admin will execute the `ActivateLaunchpad`. The last 2 messages `DeactiveLaunchpad` and  `ActivateLaunchpad` are used to switch status of launchpad to `inactive` and `active` at anytime by admin.
 
 `AddMintPhase{after_phase_id, phase_data}` - This message allows admin add new *mint phase* to launchpad. 
 The **optional** parameter `after_phase_id` is used to determine the position of *mint phase* in the list of phases. 
@@ -63,15 +63,17 @@ Requires `phase_id` to point to a valid phase.
 
 `RemoveMintPhase{phase_id}` - Removes a phase pointed by a `phase_id`. Requires `phase_id` to point to a valid phase.
 
-`AddWhitelist{phase_id, whitelist}` - Allows the address of users in `whitelist` to mint the Nfts at the current phase with `phase_id`. 
+`AddWhitelist{phase_id, whitelists}` - Allows the address of users in `whitelists` to mint the Nfts at in phase with `phase_id`. 
 
-`RemoveWhitelist{phase_id, whitelist}` - Disallow the address of users in `whitelist` to mint the Nfts at the current phase with `phase_id`.
+`RemoveWhitelist{phase_id, addresses}` - Disallow the address of users in `addresses` to mint the Nfts at the current phase with `phase_id`.
 
-`DeactivateLaunchpad{}` - Admin can pause this launchpad if it is activated.
+`DeactivateLaunchpad{}` - Admin can deactivate this launchpad if it is active.
 
-`ActivateLaunchpad{}` - Admin can unpause this launchpad if it is deactivated.
+`ActivateLaunchpad{}` - Admin can activate this launchpad if it is inactive.
 
-`Mint{phase_id}` - A user in whitelist can mint a Nft in the phase pointed by `phase_id`.
+`Mint{phase_id, amount}` - A user in whitelist can mint a Nft in the phase pointed by `phase_id`. If the phase is a public phase, every users can mint Nft.
+
+The `amount` is an optional parameter providing the number of Nfts that user want to mint. By default, the `amount` is equal to 1 and it cannot be greater than 10.
 
 ### QueryMsg
 

@@ -154,7 +154,7 @@ mod tests {
     }
 
     mod update_launchpad {
-        use cosmwasm_std::{BlockInfo, Coin};
+        use cosmwasm_std::{coin, BlockInfo, Coin};
         use cw721::TokensResponse;
 
         use crate::{
@@ -178,7 +178,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(200),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -207,7 +207,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(200),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -239,7 +239,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(600),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -279,7 +279,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(120),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -323,7 +323,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(180),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -346,7 +346,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(120),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -389,7 +389,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(180),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -412,7 +412,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(160),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -444,7 +444,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(180),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -467,7 +467,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(200),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -498,7 +498,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(200),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -529,7 +529,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(100),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -561,7 +561,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(180),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -584,7 +584,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1200),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -626,7 +626,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(600),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -658,7 +658,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -690,7 +690,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -712,7 +712,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -755,7 +755,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -777,7 +777,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -809,7 +809,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -831,7 +831,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -863,7 +863,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -885,7 +885,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(400),
                     max_supply: Some(2000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -917,7 +917,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -940,7 +940,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1200),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1007,7 +1007,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1030,7 +1030,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1200),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1096,7 +1096,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1183,7 +1183,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1000),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1199,7 +1199,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1230,7 +1230,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1000),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1256,7 +1256,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1287,7 +1287,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1000),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1310,7 +1310,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(2000),
                     max_supply: Some(1000),
                     max_nfts_per_address: 1,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: true,
                 },
             };
@@ -1326,7 +1326,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1465,7 +1465,7 @@ mod tests {
                 &mint_nft_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -1537,7 +1537,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1560,7 +1560,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1200),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1576,7 +1576,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1591,7 +1591,7 @@ mod tests {
 
             // prepare execute msg for removing whitelist from launchpad
             let remove_whitelist_msg = ExecuteMsg::RemoveWhitelist {
-                whitelist: [USER_1.to_string()].to_vec(),
+                addresses: [USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1642,7 +1642,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1658,7 +1658,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1683,7 +1683,7 @@ mod tests {
 
             // prepare execute msg for removing whitelist from launchpad
             let remove_whitelist_msg = ExecuteMsg::RemoveWhitelist {
-                whitelist: [USER_1.to_string()].to_vec(),
+                addresses: [USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1714,7 +1714,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1730,7 +1730,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1745,7 +1745,7 @@ mod tests {
 
             // prepare execute msg for removing whitelist from launchpad
             let remove_whitelist_msg = ExecuteMsg::RemoveWhitelist {
-                whitelist: [USER_1.to_string()].to_vec(),
+                addresses: [USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1776,7 +1776,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1799,7 +1799,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(200),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1833,7 +1833,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(210),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1849,7 +1849,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1906,7 +1906,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(610),
                     max_supply: Some(1),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -1922,7 +1922,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -1986,7 +1986,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -1998,7 +1998,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             // the res will be fail because max supply of phase reached
@@ -2022,7 +2022,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(610),
                     max_supply: Some(1000),
                     max_nfts_per_address: 2,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -2038,7 +2038,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -2102,7 +2102,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -2114,7 +2114,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             // the res will be fail because max supply of phase reached
@@ -2138,7 +2138,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(610),
                     max_supply: Some(10),
                     max_nfts_per_address: 1,
-                    price: 500000,
+                    price: coin(500000, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -2154,7 +2154,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -2218,7 +2218,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -2230,7 +2230,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             // the res will be fail because max supply of phase reached
@@ -2254,7 +2254,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(610),
                     max_supply: Some(20),
                     max_nfts_per_address: 10,
-                    price: 500,
+                    price: coin(500, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -2270,7 +2270,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -2339,7 +2339,7 @@ mod tests {
                     &mint_msg,
                     &[Coin {
                         denom: NATIVE_DENOM.to_string(),
-                        amount: phase_config_info[0].price.into(),
+                        amount: phase_config_info[0].price.amount,
                     }],
                 );
                 assert!(res.is_ok());
@@ -2369,7 +2369,7 @@ mod tests {
                     &mint_msg,
                     &[Coin {
                         denom: NATIVE_DENOM.to_string(),
-                        amount: phase_config_info[0].price.into(),
+                        amount: phase_config_info[0].price.amount,
                     }],
                 );
                 assert!(res.is_ok());
@@ -2407,7 +2407,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1610),
                     max_supply: Some(100),
                     max_nfts_per_address: 50,
-                    price: 50,
+                    price: coin(50, NATIVE_DENOM),
                     is_public: false,
                 },
             };
@@ -2423,7 +2423,7 @@ mod tests {
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
-                whitelist: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
                 phase_id: 1,
             };
 
@@ -2492,7 +2492,7 @@ mod tests {
                         &mint_msg,
                         &[Coin {
                             denom: NATIVE_DENOM.to_string(),
-                            amount: phase_config_info[0].price.into(),
+                            amount: phase_config_info[0].price.amount,
                         }],
                     );
                     assert!(res.is_ok());
@@ -2513,7 +2513,7 @@ mod tests {
                         &mint_msg,
                         &[Coin {
                             denom: NATIVE_DENOM.to_string(),
-                            amount: phase_config_info[0].price.into(),
+                            amount: phase_config_info[0].price.amount,
                         }],
                     );
                     assert!(res.is_ok());
@@ -2542,7 +2542,11 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: (phase_config_info[0].price * 11).into(),
+                    amount: (phase_config_info[0]
+                        .price
+                        .amount
+                        .checked_mul(11u128.into())
+                        .unwrap()),
                 }],
             );
             // the res should return an error because the max amount per mint is 10
@@ -2564,7 +2568,11 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: (phase_config_info[0].price * 10).into(),
+                    amount: phase_config_info[0]
+                        .price
+                        .amount
+                        .checked_mul(10u128.into())
+                        .unwrap(),
                 }],
             );
             assert!(res.is_ok());
@@ -2584,7 +2592,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1610),
                     max_supply: Some(100),
                     max_nfts_per_address: 1,
-                    price: 50,
+                    price: coin(50, NATIVE_DENOM),
                     is_public: true,
                 },
             };
@@ -2648,7 +2656,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -2660,7 +2668,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -2680,7 +2688,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1610),
                     max_supply: Some(100),
                     max_nfts_per_address: 1,
-                    price: 50,
+                    price: coin(50, NATIVE_DENOM),
                     is_public: true,
                 },
             };
@@ -2744,7 +2752,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
@@ -2756,7 +2764,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert_eq!(
@@ -2874,7 +2882,7 @@ mod tests {
                     end_time: app.block_info().time.plus_seconds(1610),
                     max_supply: Some(100),
                     max_nfts_per_address: 1,
-                    price: 50,
+                    price: coin(50, NATIVE_DENOM),
                     is_public: true,
                 },
             };
@@ -2929,7 +2937,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
 
@@ -2964,7 +2972,7 @@ mod tests {
                 &mint_msg,
                 &[Coin {
                     denom: NATIVE_DENOM.to_string(),
-                    amount: phase_config_info[0].price.into(),
+                    amount: phase_config_info[0].price.amount,
                 }],
             );
             assert!(res.is_ok());
