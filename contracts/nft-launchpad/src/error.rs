@@ -36,6 +36,9 @@ pub enum ContractError {
     #[error("Launchpad is already activated")]
     LaunchpadIsActivated {},
 
+    #[error("Too many nfts")]
+    TooManyNfts {},
+
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },
     // Add any other custom errors you like here.

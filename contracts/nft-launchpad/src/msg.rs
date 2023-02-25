@@ -32,11 +32,12 @@ pub enum ExecuteMsg {
         phase_id: u64,
         whitelist: Vec<String>,
     },
-    Mint {
-        phase_id: u64,
-    },
     DeactivateLaunchpad {},
     ActivateLaunchpad {},
+    Mint {
+        phase_id: u64,
+        amount: Option<u64>,
+    },
 }
 
 /// Message type for `migrate` entry_point

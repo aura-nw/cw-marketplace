@@ -253,6 +253,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate launchpad
+            let activate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_launchpad_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -630,12 +640,15 @@ mod tests {
             );
             assert!(res.is_ok());
 
-            // change block time increase 400 seconds to make phase active
-            app.set_block(BlockInfo {
-                time: app.block_info().time.plus_seconds(400),
-                height: app.block_info().height + 1,
-                chain_id: app.block_info().chain_id,
-            });
+            // admin activate the luanchpad
+            let activate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_launchpad_msg,
+                &[],
+            );
+            assert!(res.is_ok());
 
             // prepare execute msg for updating phase config
             let update_phase_msg = ExecuteMsg::UpdateMintPhase {
@@ -954,12 +967,15 @@ mod tests {
             assert_eq!(phase_config_info[0].phase_id, 1);
             assert_eq!(phase_config_info[1].phase_id, 2);
 
-            // change block time increase 400 seconds to make phase active
-            app.set_block(BlockInfo {
-                time: app.block_info().time.plus_seconds(400),
-                height: app.block_info().height + 1,
-                chain_id: app.block_info().chain_id,
-            });
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
 
             // prepare execute msg for removing phase config
             let remove_phase_msg = ExecuteMsg::RemoveMintPhase { phase_id: 1 };
@@ -1228,12 +1244,15 @@ mod tests {
             );
             assert!(res.is_ok());
 
-            // change block time increase 400 seconds to make phase active
-            app.set_block(BlockInfo {
-                time: app.block_info().time.plus_seconds(400),
-                height: app.block_info().height + 1,
-                chain_id: app.block_info().chain_id,
-            });
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
 
             // prepare execute msg for adding new whitelist to launchpad
             let add_whitelist_msg = ExecuteMsg::AddWhitelist {
@@ -1320,6 +1339,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // query mintable of user 1
             let res: Vec<MintableResponse> = app
                 .wrap()
@@ -1370,7 +1399,10 @@ mod tests {
 
             // USER_1 try to mint nft
             // prepare execute msg for minting nft
-            let mint_nft_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_nft_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint nft msg will fail because phase is not active
             let res = app.execute_contract(
@@ -1639,12 +1671,15 @@ mod tests {
             );
             assert!(res.is_ok());
 
-            // change block time increase 400 seconds to make phase active
-            app.set_block(BlockInfo {
-                time: app.block_info().time.plus_seconds(400),
-                height: app.block_info().height + 1,
-                chain_id: app.block_info().chain_id,
-            });
+            // admin activate the launchpad
+            let activate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_launchpad_msg,
+                &[],
+            );
+            assert!(res.is_ok());
 
             // prepare execute msg for removing whitelist from launchpad
             let remove_whitelist_msg = ExecuteMsg::RemoveWhitelist {
@@ -1827,8 +1862,20 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate the launchpad
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &ExecuteMsg::ActivateLaunchpad {},
+                &[],
+            );
+            assert!(res.is_ok());
+
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(
@@ -1888,6 +1935,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -1917,7 +1974,10 @@ mod tests {
             .unwrap();
 
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(
@@ -1991,6 +2051,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -2020,7 +2090,10 @@ mod tests {
             .unwrap();
 
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(
@@ -2094,6 +2167,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -2123,7 +2206,10 @@ mod tests {
             .unwrap();
 
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(
@@ -2197,6 +2283,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -2231,7 +2327,10 @@ mod tests {
             // let's USER1 mint 10 nfts
             for _ in 0..10 {
                 // prepare execute msg for minting nft
-                let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+                let mint_msg = ExecuteMsg::Mint {
+                    phase_id: 1,
+                    amount: Option::from(1),
+                };
 
                 // execute mint msg
                 let res = app.execute_contract(
@@ -2258,7 +2357,10 @@ mod tests {
             // let's ADMIN mint 10 nfts again
             for _ in 0..10 {
                 // prepare execute msg for minting nft
-                let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+                let mint_msg = ExecuteMsg::Mint {
+                    phase_id: 1,
+                    amount: Option::from(1),
+                };
 
                 // execute mint msg
                 let res = app.execute_contract(
@@ -2334,6 +2436,16 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -2366,11 +2478,14 @@ mod tests {
             let mut token_ids: Vec<String> = Vec::new();
 
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
-            // let's USER1 and ADMIN mint 100 nfts
-            for i in 0..100 {
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
+            // let's USER1 and ADMIN mint 80 nfts
+            for i in 0..80 {
                 if i % 2 == 0 {
-                    // execute mint msg
+                    // execute mint msg****
                     let res = app.execute_contract(
                         Addr::unchecked(USER_1),
                         Addr::unchecked(launchpad_address.clone()),
@@ -2413,6 +2528,46 @@ mod tests {
                     token_ids.push(token_id.to_string());
                 }
             }
+
+            // let's USER1 mint 11 nfts
+            // prepare execute msg for minting nft
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(11),
+            };
+            // execute mint msg
+            let res = app.execute_contract(
+                Addr::unchecked(USER_1),
+                Addr::unchecked(launchpad_address.clone()),
+                &mint_msg,
+                &[Coin {
+                    denom: NATIVE_DENOM.to_string(),
+                    amount: (phase_config_info[0].price * 11).into(),
+                }],
+            );
+            // the res should return an error because the max amount per mint is 10
+            assert_eq!(
+                res.unwrap_err().source().unwrap().to_string(),
+                "Too many nfts"
+            );
+
+            // let's USER1 mint 10 nfts
+            // prepare execute msg for minting nft
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(10),
+            };
+            // execute mint msg
+            let res = app.execute_contract(
+                Addr::unchecked(USER_1),
+                Addr::unchecked(launchpad_address),
+                &mint_msg,
+                &[Coin {
+                    denom: NATIVE_DENOM.to_string(),
+                    amount: (phase_config_info[0].price * 10).into(),
+                }],
+            );
+            assert!(res.is_ok());
         }
 
         #[test]
@@ -2471,8 +2626,20 @@ mod tests {
             ))
             .unwrap();
 
+            // admin active the launchpad
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &ExecuteMsg::ActivateLaunchpad {},
+                &[],
+            );
+            assert!(res.is_ok());
+
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(
@@ -2527,6 +2694,15 @@ mod tests {
             );
             assert!(res.is_ok());
 
+            // admin active the launchpad
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &ExecuteMsg::ActivateLaunchpad {},
+                &[],
+            );
+            assert!(res.is_ok());
+
             // change block time increase 400 seconds to make phase active
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(400),
@@ -2556,7 +2732,10 @@ mod tests {
             .unwrap();
 
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(
@@ -2636,15 +2815,6 @@ mod tests {
             // prepare execute msg for deactivating launchpad
             let deactivate_launchpad_msg = ExecuteMsg::DeactivateLaunchpad {};
 
-            // execute deactivate launchpad msg
-            let res = app.execute_contract(
-                Addr::unchecked(ADMIN),
-                Addr::unchecked(launchpad_address.clone()),
-                &deactivate_launchpad_msg,
-                &[],
-            );
-            assert!(res.is_ok());
-
             // execute deactivate launchpad msg again
             let res = app.execute_contract(
                 Addr::unchecked(ADMIN),
@@ -2668,6 +2838,15 @@ mod tests {
             let activate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
 
             // execute activate launchpad
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_launchpad_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // execute activate launchpad msg again
             let res = app.execute_contract(
                 Addr::unchecked(ADMIN),
                 Addr::unchecked(launchpad_address),
@@ -2737,20 +2916,11 @@ mod tests {
             ))
             .unwrap();
 
-            // prepare execute msg for deactivating launchpad
-            let deactivate_launchpad_msg = ExecuteMsg::DeactivateLaunchpad {};
-
-            // execute deactivate launchpad msg
-            let res = app.execute_contract(
-                Addr::unchecked(ADMIN),
-                Addr::unchecked(launchpad_address.clone()),
-                &deactivate_launchpad_msg,
-                &[],
-            );
-            assert!(res.is_ok());
-
             // prepare execute msg for minting nft
-            let mint_msg = ExecuteMsg::Mint { phase_id: 1 };
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(1),
+            };
 
             // execute mint msg
             let res = app.execute_contract(

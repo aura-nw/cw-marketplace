@@ -68,9 +68,9 @@ pub const PHASE_CONFIGS_RESPONSE: Item<Vec<PhaseConfigResponse>> =
 // The whitelist !!! key = (phase_id, user_address), value = number of minted_nft in phase_id
 pub const WHITELIST: Map<(u64, Addr), u64> = Map::new("whitelist");
 
-// TODO: Implement this to controll random minting
 // The length of the token_ids will be the same as the max_supply of the launchpad
 // The remaining token_ids
+// To get a token_id from REMAINING_TOKEN_IDS, we must random a position then get token_id from that position
 pub const REMAINING_TOKEN_IDS: Item<Vec<u64>> = Item::new("remaining_token_ids");
 
 pub const RANDOM_SEED: Item<[u8; 32]> = Item::new("random_seed");

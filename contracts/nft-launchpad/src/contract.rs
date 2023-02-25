@@ -52,7 +52,10 @@ pub fn instantiate(
             total_supply: 0,
             uri_prefix: msg.collection_info.uri_prefix,
             max_supply: msg.collection_info.max_supply,
-            is_active: true,
+            // set is_active to false by default, admin must activate it manually.
+            // After ativation, cannot add, update or remove phase.
+            // After ativation, cannot add or remove whitelist, too.
+            is_active: false,
         },
     )?;
 
@@ -126,7 +129,7 @@ pub fn execute(
             phase_id,
             whitelist,
         } => remove_whitelist(deps, env, info, phase_id, whitelist),
-        ExecuteMsg::Mint { phase_id } => mint(deps, env, info, phase_id),
+        ExecuteMsg::Mint { phase_id, amount } => mint(deps, env, info, phase_id, amount),
         ExecuteMsg::ActivateLaunchpad {} => active_launchpad(deps, info),
         ExecuteMsg::DeactivateLaunchpad {} => deactive_launchpad(deps, info),
     }
@@ -140,7 +143,7 @@ fn add_mint_phase(
     phase_data: PhaseData,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, env.clone()) {
+    if is_launchpad_started(deps.storage) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -271,7 +274,7 @@ pub fn update_mint_phase(
     phase_data: PhaseData,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, env.clone()) {
+    if is_launchpad_started(deps.storage) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -337,12 +340,12 @@ pub fn update_mint_phase(
 
 pub fn remove_mint_phase(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     phase_id: u64,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, env) {
+    if is_launchpad_started(deps.storage) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -430,13 +433,13 @@ pub fn remove_mint_phase(
 
 pub fn add_whitelist(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     phase_id: u64,
     whitelist: Vec<String>,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, env) {
+    if is_launchpad_started(deps.storage) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -463,13 +466,13 @@ pub fn add_whitelist(
 
 pub fn remove_whitelist(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     phase_id: u64,
     whitelist: Vec<String>,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, env) {
+    if is_launchpad_started(deps.storage) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -495,7 +498,14 @@ pub fn mint(
     env: Env,
     info: MessageInfo,
     phase_id: u64,
+    amount: Option<u64>,
 ) -> Result<Response, ContractError> {
+    let amount = amount.unwrap_or(1);
+
+    if amount > 10 {
+        return Err(ContractError::TooManyNfts {});
+    }
+
     // get the launchpad info
     let mut launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage)?;
 
@@ -518,17 +528,17 @@ pub fn mint(
     }
 
     // check if the total supply of the phase_id is greater than or equal to the max_supply, then return error
-    if launchpad_info.total_supply >= launchpad_info.max_supply
+    if launchpad_info.total_supply + amount > launchpad_info.max_supply
         || (phase_config.max_supply.is_some()
-            && phase_config.total_supply >= phase_config.max_supply.unwrap())
+            && phase_config.total_supply + amount > phase_config.max_supply.unwrap())
     {
         return Err(ContractError::MaxSupplyReached {});
     } else {
         // increase the total supply of the phase_id and the launchpad
-        phase_config.total_supply += 1;
+        phase_config.total_supply += amount;
         PHASE_CONFIGS.save(deps.storage, phase_id, &phase_config)?;
 
-        launchpad_info.total_supply += 1;
+        launchpad_info.total_supply += amount;
         LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
     }
 
@@ -544,46 +554,56 @@ pub fn mint(
     let mut minted_nfts = WHITELIST
         .load(deps.storage, (phase_id, info.sender.clone()))
         .unwrap();
-    if minted_nfts >= phase_config.max_nfts_per_address {
+    if minted_nfts + amount > phase_config.max_nfts_per_address {
         return Err(ContractError::UserMintedTooMuchNfts {});
     } else {
         // increase the number of minted NFTs of the sender
-        minted_nfts += 1;
+        minted_nfts += amount;
         WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
     }
 
     // check if the funds is not enough, then return error
-    if info.funds.len() != 1 || info.funds[0].amount < phase_config.price.into() {
+    if info.funds.len() != 1
+        || info.funds[0].amount < (phase_config.price * (amount as u128)).into()
+    {
         return Err(ContractError::NotEnoughFunds {});
     }
 
-    // TODO: Mint NFT for sender
-    // generate random token_id
-    let token_id = generate_random_token_id(deps.storage, env, info.sender.to_string()).unwrap();
+    // mint NFT(s) for the sender
+    let mut res: Response = Response::new();
+    for _ in 0..amount {
+        // get current time
+        let current_time = env.block.time;
+        // generate random token_id
+        let token_id =
+            generate_random_token_id(deps.storage, current_time, info.sender.to_string()).unwrap();
 
-    // get the token_uri based on the token_id
-    let token_uri = get_token_uri(deps.as_ref(), token_id.clone());
+        // get the token_uri based on the token_id
+        let token_uri = get_token_uri(deps.as_ref(), token_id.clone());
 
-    // get the contract address of the NFT contract from launchpad info
-    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage)?;
+        // get the contract address of the NFT contract from launchpad info
+        let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage)?;
 
-    // create mint message NFT for the sender
-    let mint_msg = WasmMsg::Execute {
-        contract_addr: launchpad_info.collection_address.to_string(),
-        msg: to_binary(&Cw2981ExecuteMsg::Mint(MintMsg {
-            token_id,
-            owner: info.sender.to_string(),
-            token_uri: Some(token_uri),
-            extension: None,
-        }))?,
-        funds: vec![],
-    };
+        // create mint message NFT for the sender
+        let mint_msg = WasmMsg::Execute {
+            contract_addr: launchpad_info.collection_address.to_string(),
+            msg: to_binary(&Cw2981ExecuteMsg::Mint(MintMsg {
+                token_id,
+                owner: info.sender.to_string(),
+                token_uri: Some(token_uri),
+                extension: None,
+            }))?,
+            funds: vec![],
+        };
 
-    let res = Response::new().add_message(mint_msg);
+        res = res.add_message(mint_msg);
+    }
+
     Ok(res.add_attributes([
         ("action", "launchpad_mint"),
         ("owner", info.sender.as_ref()),
         ("phase_id", &phase_id.to_string()),
+        ("amount", &amount.to_string()),
     ]))
 }
 
@@ -633,14 +653,14 @@ pub fn deactive_launchpad(deps: DepsMut, info: MessageInfo) -> Result<Response, 
 
 fn generate_random_token_id(
     storage: &mut dyn Storage,
-    env: Env,
+    current_time: Timestamp,
     sender: String,
 ) -> StdResult<String> {
     // load RANDOM_SEED from the storage
     let random_seed = RANDOM_SEED.load(storage).unwrap();
 
     // init a key for the random provider from the msg.sender and current time
-    let key = format!("{}{}", sender, env.block.time);
+    let key = format!("{}{}", sender, current_time);
 
     // define random provider from the random_seed
     let mut provider = sub_randomness_with_key(random_seed, key);
@@ -812,25 +832,11 @@ fn update_phases_config_response(deps: DepsMut) -> Result<Response, ContractErro
 }
 
 // we need a function to check when the launchpad started
-fn is_launchpad_started(storage: &dyn Storage, env: Env) -> bool {
-    // load the launchpad info
+fn is_launchpad_started(storage: &dyn Storage) -> bool {
+    // load the status of the launchpad
     let launchpad_info = LAUNCHPAD_INFO.load(storage).unwrap();
 
-    // load the first phase config. It is always the phase with id 0
-    let first_phase_config = PHASE_CONFIGS
-        .load(storage, launchpad_info.first_phase_id)
-        .unwrap();
-
-    // load the real first phase id based on the dummy phase config
-    if let Some(real_first_phase_id) = first_phase_config.next_phase_id {
-        // load the real first phase config
-        let real_first_phase_config = PHASE_CONFIGS.load(storage, real_first_phase_id).unwrap();
-
-        // check if the current time is less than the start time of the real first phase config
-        env.block.time >= real_first_phase_config.start_time
-    } else {
-        false
-    }
+    launchpad_info.is_active
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
