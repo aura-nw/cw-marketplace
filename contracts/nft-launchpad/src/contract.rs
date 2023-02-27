@@ -621,7 +621,7 @@ pub fn mint(
             generate_random_token_id(deps.storage, current_time, info.sender.to_string()).unwrap();
 
         // get the token_uri based on the token_id
-        let token_uri = get_token_uri(deps.as_ref(), &token_id);
+        let token_uri = get_token_uri(&launchpad_info.uri_prefix, &token_id);
 
         // create mint message NFT for the sender
         let mint_msg = WasmMsg::Execute {
@@ -761,11 +761,7 @@ fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdRe
     Ok(token_id.to_string())
 }
 
-fn get_token_uri(deps: Deps, token_id: &str) -> String {
-    // get the uri_prefix from launchpad info
-    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage).unwrap();
-    let uri_prefix = launchpad_info.uri_prefix;
-
+fn get_token_uri(uri_prefix: &str, token_id: &str) -> String {
     // TODO: maybe we need the suffix of the token_uri, too
     // the token_uri is the uri_prefix + token_id
     format!("{}{}", uri_prefix, token_id)
