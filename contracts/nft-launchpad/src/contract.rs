@@ -3,8 +3,8 @@ use std::vec;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdResult, Storage, SubMsg, Timestamp, Uint128, WasmMsg,
+    coin, has_coins, to_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Reply, ReplyOn, Response, StdResult, Storage, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw2981_royalties::MintMsg;
@@ -593,15 +593,17 @@ pub fn mint(
     WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
 
     // check if the funds is not enough, then return error
-    let price = phase_config.price;
-    if info.funds.len() != 1
-        || info.funds[0].denom != price.denom
-        || info.funds[0].amount
-            < price
+    if !has_coins(
+        &info.funds,
+        &Coin {
+            denom: phase_config.price.denom,
+            amount: phase_config
+                .price
                 .amount
                 .checked_mul(Uint128::from(amount_nfts))
-                .unwrap()
-    {
+                .unwrap(),
+        },
+    ) {
         return Err(ContractError::NotEnoughFunds {});
     }
 
