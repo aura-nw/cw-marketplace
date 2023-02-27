@@ -63,11 +63,6 @@ pub fn instantiate(
     let randomness = randomness_from_str(msg.random_seed).unwrap();
     RANDOM_SEED.save(deps.storage, &randomness)?;
 
-    // init the REMAINING_TOKEN_IDS with the max supply of the collection
-    let remaining_token_ids: Vec<u64> = vec![0; msg.collection_info.max_supply as usize];
-    // save the remaining token ids to REMAINING_TOKEN_IDS
-    REMAINING_TOKEN_IDS.save(deps.storage, &remaining_token_ids)?;
-
     // add an instantiate message for new cw2981 collection contract
     Ok(Response::new()
         .add_attributes(vec![
@@ -575,12 +570,9 @@ pub fn mint(
     {
         return Err(ContractError::MaxSupplyReached {});
     }
-    // increase the total supply of the phase_id and the launchpad
+    // increase the total supply of the phase_id
     phase_config.total_supply += amount_nfts;
     PHASE_CONFIGS.save(deps.storage, phase_id, &phase_config)?;
-
-    launchpad_info.total_supply += amount_nfts;
-    LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
 
     // check if the number of minted NFTs of the sender is greater than or equal to the max_mint of the phase_id, then return error
     let mut minted_nfts = minted_nfts_result.unwrap_or(0u64);
@@ -610,9 +602,6 @@ pub fn mint(
     // get current time
     let current_time = env.block.time;
 
-    // get the contract address of the NFT contract from launchpad info
-    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(deps.storage)?;
-
     // mint NFT(s) for the sender
     let mut res: Response = Response::new();
     for _ in 0..amount_nfts {
@@ -637,6 +626,10 @@ pub fn mint(
 
         res = res.add_message(mint_msg);
     }
+
+    // increase the total supply of the the launchpad
+    launchpad_info.total_supply += amount_nfts;
+    LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
 
     Ok(res.add_attributes([
         ("action", "launchpad_mint"),
@@ -729,33 +722,30 @@ fn generate_random_token_id(
 }
 
 fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdResult<String> {
-    // load the remaining token_ids from the storage
-    let mut remaining_token_ids = REMAINING_TOKEN_IDS.load(storage).unwrap();
+    // get the number of remaining nfts launchpad
+    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(storage).unwrap();
+    let remaining_nfts = launchpad_info.max_supply - launchpad_info.total_supply;
 
     // get the current token_id at the token_id_position
     // if the token_id at the token_id_position is equal 0, then return its position
     // else, return the token_id at the token_id_position
-    let token_id = if remaining_token_ids[position as usize] != 0 {
-        remaining_token_ids[position as usize]
-    } else {
-        position + 1
-    };
+    let token_id = REMAINING_TOKEN_IDS
+        .may_load(storage, position)
+        .unwrap()
+        .unwrap_or(position + 1);
 
+    println!("remaining_nfts: {} {}", remaining_nfts, position);
     // determine the id in the last position of the remaining_token_ids
-    let last_token_id = if remaining_token_ids[remaining_token_ids.len() - 1] != 0 {
-        remaining_token_ids[remaining_token_ids.len() - 1]
-    } else {
-        remaining_token_ids.len() as u64
-    };
+    let last_token_id = REMAINING_TOKEN_IDS
+        .may_load(storage, remaining_nfts - 1)
+        .unwrap()
+        .unwrap_or(remaining_nfts);
 
     // now, swap the token_id with the last_token_id in the remaining_token_ids
-    remaining_token_ids[position as usize] = last_token_id;
+    REMAINING_TOKEN_IDS.save(storage, position, &last_token_id)?;
 
     // remove the last item of the remaining_token_ids
-    remaining_token_ids.pop();
-
-    // save the remaining_token_ids to the storage
-    REMAINING_TOKEN_IDS.save(storage, &remaining_token_ids)?;
+    REMAINING_TOKEN_IDS.remove(storage, remaining_nfts - 1);
 
     // return the token_id
     Ok(token_id.to_string())

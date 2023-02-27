@@ -71,6 +71,6 @@ pub const WHITELIST: Map<(u64, Addr), u64> = Map::new("whitelist");
 // The length of the token_ids will be the same as the max_supply of the launchpad
 // The remaining token_ids
 // To get a token_id from REMAINING_TOKEN_IDS, we must random a position then get token_id from that position
-pub const REMAINING_TOKEN_IDS: Item<Vec<u64>> = Item::new("remaining_token_ids");
+pub const REMAINING_TOKEN_IDS: Map<u64, u64> = Map::new("remaining_token_ids");
 
 pub const RANDOM_SEED: Item<[u8; 32]> = Item::new("random_seed");

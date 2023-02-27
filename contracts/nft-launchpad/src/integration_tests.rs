@@ -2386,8 +2386,8 @@ mod tests {
 
             // assert tpken_ids array correct
             let expected_ids = [
-                "16", "17", "11", "5", "4", "1", "6", "7", "10", "8", "2", "20", "3", "9", "12",
-                "13", "15", "14", "19", "18",
+                "17", "18", "12", "5", "4", "1", "7", "14", "10", "9", "2", "16", "3", "11", "19",
+                "20", "6", "13", "15", "8",
             ]
             .to_vec();
             assert_eq!(token_ids, expected_ids);
@@ -2800,13 +2800,13 @@ mod tests {
             let (mut app, launchpad_address) = create_launchpad();
 
             // prepare execute msg for deactivating launchpad
-            let deactivate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
+            let activate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
 
             // execute deactivate launchpad msg
             let res = app.execute_contract(
                 Addr::unchecked(USER_1),
                 Addr::unchecked(launchpad_address),
-                &deactivate_launchpad_msg,
+                &activate_launchpad_msg,
                 &[],
             );
             assert_eq!(
@@ -2857,7 +2857,7 @@ mod tests {
             // execute activate launchpad msg again
             let res = app.execute_contract(
                 Addr::unchecked(ADMIN),
-                Addr::unchecked(launchpad_address),
+                Addr::unchecked(launchpad_address.clone()),
                 &activate_launchpad_msg,
                 &[],
             );
@@ -2866,6 +2866,16 @@ mod tests {
                 res.unwrap_err().source().unwrap().to_string(),
                 "Launchpad is already activated"
             );
+
+            // deactive launchpad
+            let deactivate_launchpad_msg = ExecuteMsg::DeactivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address),
+                &deactivate_launchpad_msg,
+                &[],
+            );
+            assert!(res.is_ok());
         }
 
         #[test]
