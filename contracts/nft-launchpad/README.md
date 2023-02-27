@@ -1,7 +1,4 @@
 # The Launchpad
-## Background
-Launchpads are very common in other marketplaces in other blockchains. For example, in Solana, MagicEden offers both a marketplace and a launchpad. In Stargaze, another Cosmos chain, their launchpad is the only way for a creator to launch a NFT project. Recently, OpenSea also starts their own launchpad named Drops. Running a launchpad is a safe way for a marketplace to get more users and creators.
-
 ## Goals
 The launchpad needs to satisfy the following conditions:
 - Managed by our admins. Because projects will be launched under Aura, we need to be able to manage their content and other information.
@@ -22,8 +19,6 @@ graph TD
 
     User -- 4.a. mint --> Launchpad
     Launchpad -- 4.b. mint_to_user   --> Collection
-
-    Backend -- 5. sync --> Launchpad
 ```
 
 ## Launchpad Contract

@@ -24,6 +24,7 @@ pub enum ExecuteMsg {
     RemoveMintPhase {
         phase_id: u64,
     },
+    // TODO: should implement Merkle Airdop instead of whitelist
     AddWhitelist {
         phase_id: u64,
         whitelists: Vec<String>,

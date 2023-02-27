@@ -458,6 +458,8 @@ pub fn remove_mint_phase(
         // update the phase_configs_response
         update_phases_config_response(deps)?;
 
+        // TODO: remove the phase_id from the whitelist
+
         Ok(Response::new().add_attributes([
             ("action", "remove_mint_phase"),
             ("phase_id", &phase_id.to_string()),
@@ -572,26 +574,23 @@ pub fn mint(
             && phase_config.total_supply + amount_nfts > phase_config.max_supply.unwrap())
     {
         return Err(ContractError::MaxSupplyReached {});
-    } else {
-        // increase the total supply of the phase_id and the launchpad
-        phase_config.total_supply += amount_nfts;
-        PHASE_CONFIGS.save(deps.storage, phase_id, &phase_config)?;
-
-        launchpad_info.total_supply += amount_nfts;
-        LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
     }
+    // increase the total supply of the phase_id and the launchpad
+    phase_config.total_supply += amount_nfts;
+    PHASE_CONFIGS.save(deps.storage, phase_id, &phase_config)?;
 
-    let mut minted_nfts = minted_nfts_result.unwrap_or(0u64);
+    launchpad_info.total_supply += amount_nfts;
+    LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
 
     // check if the number of minted NFTs of the sender is greater than or equal to the max_mint of the phase_id, then return error
-
+    let mut minted_nfts = minted_nfts_result.unwrap_or(0u64);
     if minted_nfts + amount_nfts > phase_config.max_nfts_per_address {
         return Err(ContractError::UserMintedTooMuchNfts {});
-    } else {
-        // increase the number of minted NFTs of the sender
-        minted_nfts += amount_nfts;
-        WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
     }
+
+    // increase the number of minted NFTs of the sender
+    minted_nfts += amount_nfts;
+    WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
 
     // check if the funds is not enough, then return error
     let price = phase_config.price;
@@ -767,8 +766,7 @@ fn get_token_uri(deps: Deps, token_id: &str) -> String {
 
     // TODO: maybe we need the suffix of the token_uri, too
     // the token_uri is the uri_prefix + token_id
-    let token_uri = format!("{}{}", uri_prefix, token_id);
-    token_uri
+    format!("{}{}", uri_prefix, token_id)
 }
 
 fn verify_phase_time(
