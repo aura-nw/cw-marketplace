@@ -63,11 +63,6 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const LAUNCHPAD_INFO: Item<LaunchpadInfo> = Item::new("launchpad_info");
 pub const PHASE_CONFIGS: Map<u64, PhaseConfig> = Map::new("phase_configs");
 
-// we will create a Item to store the list of phases for easier query
-// this state will be updated when adding a new phase or removing a phase
-pub const PHASE_CONFIGS_RESPONSE: Item<Vec<PhaseConfigResponse>> =
-    Item::new("phase_configs_response");
-
 // The whitelist !!! key = (phase_id, user_address), value = number of minted_nft in phase_id
 pub const WHITELIST: Map<(u64, Addr), u64> = Map::new("whitelist");
 

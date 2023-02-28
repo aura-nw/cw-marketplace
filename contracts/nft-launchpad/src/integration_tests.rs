@@ -77,6 +77,48 @@ mod tests {
             assert_eq!(res.name, COLLECTION_NAME);
             assert_eq!(res.symbol, COLLECTION_SYMBOL);
         }
+
+        #[test]
+        fn cannot_instantiate_new_launchpad_because_fee_too_high() {
+            // get integration test app and contracts
+            let (mut app, contracts) = instantiate_contracts();
+            let cw2981_code_id = contracts[0].contract_code_id;
+            let launchpad_code_id = contracts[1].contract_code_id;
+
+            // prepare instantiate msg for launchpad contract
+            let instantiate_msg = InstantiateMsg {
+                colection_code_id: cw2981_code_id,
+                collection_info: ColectionInfo {
+                    name: COLLECTION_NAME.to_string(),
+                    symbol: COLLECTION_SYMBOL.to_string(),
+                    royalty_percentage: None,
+                    royalty_payment_address: None,
+                    max_supply: 5000,
+                    uri_prefix:
+                        "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
+                            .to_string(),
+                    creator: CREATOR.to_string(),
+                },
+                random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
+                    .to_string(),
+                launchpad_fee: 100,
+                launchpad_collector: Some(LAUNCHPAD_COLLECTOR.to_string()),
+            };
+
+            // instantiate launchpad contract
+            let res = app.instantiate_contract(
+                launchpad_code_id,
+                Addr::unchecked(ADMIN),
+                &instantiate_msg,
+                &[],
+                "test instantiate marketplace contract",
+                None,
+            );
+            assert_eq!(
+                res.unwrap_err().source().unwrap().to_string(),
+                "Invalid launchpad fee"
+            );
+        }
     }
 
     pub fn create_launchpad() -> (App, Addr) {
@@ -3126,6 +3168,32 @@ mod tests {
                 res.unwrap_err().source().unwrap().to_string(),
                 "Unauthorized"
             );
+
+            // change block time increase 1209 seconds to make phase almost ended
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1209),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // CREATOR cannot execute withdraw nft profit msg because the last phase is not ended
+            let res = app.execute_contract(
+                Addr::unchecked(CREATOR),
+                Addr::unchecked(launchpad_address.clone()),
+                &withdraw_nft_profit_msg,
+                &[],
+            );
+            assert_eq!(
+                res.unwrap_err().source().unwrap().to_string(),
+                "Last phase not finished"
+            );
+
+            // change block time increase 1 seconds to make phase ended
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
 
             // execute withdraw nft profit msg
             let res = app.execute_contract(

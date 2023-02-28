@@ -66,9 +66,15 @@ Requires `phase_id` to point to a valid phase.
 
 `ActivateLaunchpad{}` - Admin can activate this launchpad if it is inactive.
 
+The only message can be called by a normal user is `Mint`.
+
 `Mint{phase_id, amount}` - A user in whitelist can mint a Nft in the phase pointed by `phase_id`. If the phase is a public phase, every users can mint Nft.
 
 The `amount` is an optional parameter providing the number of Nfts that user want to mint. By default, the `amount` is equal to 1 and it cannot be greater than 10.
+
+Additional, the contract has a message to support the `creator` of collection claim the profit of selling Nfts.
+
+`Withdraw{denom}` - The `creator` can claim his profit by providing the denom of supported Native token. All balance of specific native token (after deducting the launchpad service fee) will be sent to the `creator`. The address of `creator` and launchpad service fee must be specified when instantiation contract.
 
 ### QueryMsg
 
@@ -77,6 +83,8 @@ The `amount` is an optional parameter providing the number of Nfts that user wan
 The `LaunchpadInfo` response includes:
 ```rust
 pub struct LaunchpadInfo {
+    pub creator: Addr,
+    pub launchpad_fee: u32,
     pub collection_address: Addr,
     pub total_supply: u64,
     pub max_supply: u64,
@@ -84,7 +92,7 @@ pub struct LaunchpadInfo {
     pub first_phase_id: u64,
     pub last_phase_id: u64,
     pub last_issued_id: u64,
-    pub is_active: bool,
+    pub is_active: bool, 
 }
 ```
 
@@ -99,7 +107,8 @@ pub struct PhaseConfigResponse {
     pub max_supply: Option<u64>,
     pub total_supply: u64,
     pub max_nfts_per_address: u64,
-    pub price: u128,
+    pub price: Coin,
+    pub is_public: bool,
 }
 ```
 

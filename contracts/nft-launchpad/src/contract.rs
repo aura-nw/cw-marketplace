@@ -19,7 +19,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
 use crate::state::{
     Config, LaunchpadInfo, PhaseConfig, PhaseConfigResponse, PhaseData, CONFIG, LAUNCHPAD_INFO,
-    PHASE_CONFIGS, PHASE_CONFIGS_RESPONSE, RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
+    PHASE_CONFIGS, RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
 };
 
 // version info for migration info
@@ -65,7 +65,12 @@ pub fn instantiate(
             uri_prefix: msg.collection_info.uri_prefix,
             max_supply: msg.collection_info.max_supply,
             is_active: false,
-            launchpad_fee: msg.launchpad_fee,
+            launchpad_fee: if msg.launchpad_fee < 100 {
+                // we will not take all the profit of creator ^^
+                msg.launchpad_fee
+            } else {
+                return Err(ContractError::InvalidLaunchpadFee {});
+            },
         },
     )?;
 
@@ -251,8 +256,6 @@ fn add_mint_phase(
                 launchpad_info.last_phase_id = valid_phase_id;
                 LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
             }
-            // update the phase_configs_response
-            update_phases_config_response(deps)?;
         }
         // if the after_phase_id is none, then add the phase_data to the last item of the phase_configs
         None => {
@@ -296,9 +299,6 @@ fn add_mint_phase(
             let mut launchpad_info = LAUNCHPAD_INFO.load(deps.storage)?;
             launchpad_info.last_phase_id = valid_phase_id;
             LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
-
-            // update the phase_configs_response
-            update_phases_config_response(deps)?;
         }
     }
 
@@ -360,9 +360,6 @@ pub fn update_mint_phase(
             ..phase_config
         },
     )?;
-
-    // update the phase_configs_response
-    update_phases_config_response(deps)?;
 
     Ok(Response::new().add_attributes([
         ("action", "update_mint_phase"),
@@ -431,9 +428,6 @@ pub fn remove_mint_phase(
         // remove the phase_id from the storage
         PHASE_CONFIGS.remove(deps.storage, phase_id);
 
-        // update the phase_configs_response
-        update_phases_config_response(deps)?;
-
         Ok(Response::new().add_attributes([
             ("action", "remove_mint_phase"),
             ("phase_id", &phase_id.to_string()),
@@ -460,9 +454,6 @@ pub fn remove_mint_phase(
 
         // remove the phase_id from the storage
         PHASE_CONFIGS.remove(deps.storage, phase_id);
-
-        // update the phase_configs_response
-        update_phases_config_response(deps)?;
 
         // TODO: remove the phase_id from the whitelist
 
@@ -838,6 +829,15 @@ pub fn withdraw(
         return Err(ContractError::Unauthorized {});
     }
 
+    // cannot withdraw if the last phase of launchpad is not finished
+    // load the phase config of the last phase
+    let last_phase_config = PHASE_CONFIGS.load(deps.storage, launchpad_info.last_phase_id)?;
+
+    // check if the last phase is finished
+    if last_phase_config.end_time > env.block.time {
+        return Err(ContractError::LastPhaseNotFinished {});
+    }
+
     // get the balance of contract in bank
     let contract_balance: BalanceResponse =
         deps.querier.query(&QueryRequest::Bank(BankQuery::Balance {
@@ -895,7 +895,29 @@ pub fn withdraw(
     Ok(res.add_attribute("withdraw_time", env.block.time.to_string()))
 }
 
-fn update_phases_config_response(deps: DepsMut) -> StdResult<()> {
+// we need a function to check when the launchpad started
+fn is_launchpad_started(storage: &dyn Storage) -> bool {
+    // load the status of the launchpad
+    let launchpad_info = LAUNCHPAD_INFO.load(storage).unwrap();
+
+    launchpad_info.is_active
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::GetLaunchpadInfo {} => to_binary(&query_launchpad_info(deps)?),
+        QueryMsg::GetAllPhaseConfigs {} => to_binary(&query_all_phase_configs(deps)?),
+        QueryMsg::Mintable { user } => to_binary(&query_mintable(deps, Addr::unchecked(user))?),
+    }
+}
+
+pub fn query_launchpad_info(deps: Deps) -> StdResult<LaunchpadInfo> {
+    let launchpad_info = LAUNCHPAD_INFO.load(deps.storage)?;
+    Ok(launchpad_info)
+}
+
+pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>> {
     // load the last_phase_id
     let last_phase_id = LAUNCHPAD_INFO.load(deps.storage).unwrap().last_phase_id;
 
@@ -928,51 +950,33 @@ fn update_phases_config_response(deps: DepsMut) -> StdResult<()> {
         });
     }
 
-    // update the PHASE_CONFIGS_RESPONSE
-    PHASE_CONFIGS_RESPONSE.save(deps.storage, &phase_configs_response)?;
-
-    Ok(())
-}
-
-// we need a function to check when the launchpad started
-fn is_launchpad_started(storage: &dyn Storage) -> bool {
-    // load the status of the launchpad
-    let launchpad_info = LAUNCHPAD_INFO.load(storage).unwrap();
-
-    launchpad_info.is_active
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetLaunchpadInfo {} => to_binary(&query_launchpad_info(deps)?),
-        QueryMsg::GetAllPhaseConfigs {} => to_binary(&query_all_phase_configs(deps)?),
-        QueryMsg::Mintable { user } => to_binary(&query_mintable(deps, Addr::unchecked(user))?),
-    }
-}
-
-pub fn query_launchpad_info(deps: Deps) -> StdResult<LaunchpadInfo> {
-    let launchpad_info = LAUNCHPAD_INFO.load(deps.storage)?;
-    Ok(launchpad_info)
-}
-
-pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>> {
-    let phase_configs_response = PHASE_CONFIGS_RESPONSE.load(deps.storage)?;
     Ok(phase_configs_response)
 }
 
 pub fn query_mintable(deps: Deps, user: Addr) -> StdResult<Vec<MintableResponse>> {
-    // load the information of phase configs
-    let phase_configs = PHASE_CONFIGS_RESPONSE.load(deps.storage)?;
+    // load the last_phase_id
+    let last_phase_id = LAUNCHPAD_INFO.load(deps.storage).unwrap().last_phase_id;
+
+    let mut phase_id = 0;
+
+    // get the dummy phase config
+    let mut phase_config = PHASE_CONFIGS.load(deps.storage, phase_id).unwrap();
 
     // create an empty mintable response vector
     let mut mintable_response: Vec<MintableResponse> = vec![];
 
-    for phase_config in phase_configs {
+    // from phase_id 0, loop through all the phase_configs, while the next_phase_id is not None
+    while phase_id != last_phase_id {
+        // get the next phase id
+        phase_id = phase_config.next_phase_id.unwrap();
+
+        // get the next phase config
+        phase_config = PHASE_CONFIGS.load(deps.storage, phase_id).unwrap();
+
         // load the number of minted nfts of the user from WHITELIST base of the phase_id and the address of user
-        let minted_nfts = if WHITELIST.has(deps.storage, (phase_config.phase_id, user.clone())) {
+        let minted_nfts = if WHITELIST.has(deps.storage, (phase_id, user.clone())) {
             WHITELIST
-                .load(deps.storage, (phase_config.phase_id, user.clone()))
+                .load(deps.storage, (phase_id, user.clone()))
                 .unwrap()
         } else if phase_config.is_public {
             0
@@ -983,7 +987,7 @@ pub fn query_mintable(deps: Deps, user: Addr) -> StdResult<Vec<MintableResponse>
         let mintable = phase_config.max_nfts_per_address - minted_nfts;
 
         mintable_response.push(MintableResponse {
-            phase_id: phase_config.phase_id,
+            phase_id,
             remaining_nfts: mintable,
         });
     }

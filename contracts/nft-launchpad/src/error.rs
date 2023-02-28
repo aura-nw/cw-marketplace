@@ -39,6 +39,12 @@ pub enum ContractError {
     #[error("Too many nfts")]
     TooManyNfts {},
 
+    #[error("Invalid launchpad fee")]
+    InvalidLaunchpadFee {},
+
+    #[error("Last phase not finished")]
+    LastPhaseNotFinished {},
+
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },
     // Add any other custom errors you like here.
