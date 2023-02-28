@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-    use crate::testing_config::env::{instantiate_contracts, ADMIN};
+    use crate::testing_config::env::{instantiate_contracts, ADMIN, CREATOR, LAUNCHPAD_COLLECTOR};
 
     use cosmwasm_std::Addr;
 
@@ -15,7 +15,6 @@ mod tests {
     pub const COLLECTION_SYMBOL: &str = "LPC";
 
     mod create_launchpad {
-
         use super::*;
 
         #[test]
@@ -37,9 +36,12 @@ mod tests {
                     uri_prefix:
                         "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                             .to_string(),
+                    creator: CREATOR.to_string(),
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
                     .to_string(),
+                launchpad_fee: 10,
+                launchpad_collector: Some(LAUNCHPAD_COLLECTOR.to_string()),
             };
 
             // instantiate launchpad contract
@@ -95,9 +97,12 @@ mod tests {
                 uri_prefix:
                     "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                         .to_string(),
+                creator: CREATOR.to_string(),
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
+            launchpad_fee: 10,
+            launchpad_collector: Some(LAUNCHPAD_COLLECTOR.to_string()),
         };
 
         // instantiate launchpad contract
@@ -133,9 +138,13 @@ mod tests {
                 uri_prefix:
                     "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                         .to_string(),
+                creator: CREATOR.to_string(),
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
+
+            launchpad_fee: 0,
+            launchpad_collector: Some(LAUNCHPAD_COLLECTOR.to_string()),
         };
 
         // instantiate launchpad contract
@@ -2986,6 +2995,160 @@ mod tests {
                 }],
             );
             assert!(res.is_ok());
+        }
+    }
+
+    mod claim_token {
+        use cosmwasm_std::{coin, BlockInfo, Coin, Uint128};
+
+        use crate::{
+            state::{PhaseConfigResponse, PhaseData},
+            testing_config::env::{NATIVE_DENOM, USER_1},
+        };
+
+        use super::*;
+
+        #[test]
+        fn only_creator_can_withdraw_nfts_profit() {
+            // get integration test app and launchpad address
+            let (mut app, launchpad_address) = create_launchpad();
+
+            // ADD FIRST PHASE to the first position
+            // prepare execute msg for adding new phase to launchpad
+            let add_first_phase_msg = ExecuteMsg::AddMintPhase {
+                after_phase_id: None,
+                phase_data: PhaseData {
+                    start_time: app.block_info().time.plus_seconds(200),
+                    end_time: app.block_info().time.plus_seconds(1610),
+                    max_supply: Some(100),
+                    max_nfts_per_address: 50,
+                    price: coin(100, NATIVE_DENOM),
+                    is_public: true,
+                },
+            };
+
+            // execute add new phase msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_first_phase_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // add USER_1 to whitelist
+            let add_to_whitelist_msg = ExecuteMsg::AddWhitelist {
+                phase_id: 1,
+                whitelists: vec![USER_1.to_string()],
+            };
+
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_to_whitelist_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // admin activate launchpad
+            let activate_launchpad_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_launchpad_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // change block time increase 400 seconds to make phase active
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(400),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // get the price of phase 1
+            let phase_config_info: Vec<PhaseConfigResponse> = app
+                .wrap()
+                .query_wasm_smart(
+                    Addr::unchecked(launchpad_address.clone()),
+                    &QueryMsg::GetAllPhaseConfigs {},
+                )
+                .unwrap();
+
+            // Mint 1000000000 native token to USER_1
+            app.sudo(cw_multi_test::SudoMsg::Bank(
+                cw_multi_test::BankSudo::Mint {
+                    to_address: USER_1.to_string(),
+                    amount: vec![Coin {
+                        amount: 1000000000u128.into(),
+                        denom: NATIVE_DENOM.to_string(),
+                    }],
+                },
+            ))
+            .unwrap();
+
+            // prepare execute msg for minting nft
+            let mint_msg = ExecuteMsg::Mint {
+                phase_id: 1,
+                amount: Option::from(10),
+            };
+
+            // execute mint msg
+            let res = app.execute_contract(
+                Addr::unchecked(USER_1),
+                Addr::unchecked(launchpad_address.clone()),
+                &mint_msg,
+                &[Coin {
+                    denom: NATIVE_DENOM.to_string(),
+                    amount: phase_config_info[0]
+                        .price
+                        .amount
+                        .checked_mul(10u128.into())
+                        .unwrap(),
+                }],
+            );
+            assert!(res.is_ok());
+
+            // creator withdraw nft profit
+            let withdraw_nft_profit_msg = ExecuteMsg::Withdraw {
+                denom: NATIVE_DENOM.to_string(),
+            };
+
+            // ADMIN execute withdraw nft profit msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &withdraw_nft_profit_msg,
+                &[],
+            );
+            assert_eq!(
+                res.unwrap_err().source().unwrap().to_string(),
+                "Unauthorized"
+            );
+
+            // execute withdraw nft profit msg
+            let res = app.execute_contract(
+                Addr::unchecked(CREATOR),
+                Addr::unchecked(launchpad_address),
+                &withdraw_nft_profit_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // the CREATOR should have (100 * 10) * 90%  native token
+            let creator_balance = app
+                .wrap()
+                .query_balance(Addr::unchecked(CREATOR), NATIVE_DENOM)
+                .unwrap();
+            assert_eq!(creator_balance.amount, Uint128::from(900u128));
+
+            // the LAUNCHPAD_COLLECTOR should have (100 * 10) * 10%  native token
+            let launchpad_balance = app
+                .wrap()
+                .query_balance(Addr::unchecked(LAUNCHPAD_COLLECTOR), NATIVE_DENOM)
+                .unwrap();
+            assert_eq!(launchpad_balance.amount, Uint128::from(100u128));
         }
     }
 }

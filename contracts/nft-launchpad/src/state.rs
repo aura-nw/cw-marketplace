@@ -4,7 +4,8 @@ use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Addr,
+    pub admin: Addr,               // the launchpad admin
+    pub launchpad_collector: Addr, // the address that will receive the launchpad fee
 }
 
 #[cw_serde]
@@ -46,6 +47,8 @@ pub struct PhaseConfigResponse {
 
 #[cw_serde]
 pub struct LaunchpadInfo {
+    pub creator: Addr,      // the creator of the collection
+    pub launchpad_fee: u32, // the fee of the launchpad
     pub collection_address: Addr,
     pub total_supply: u64,
     pub max_supply: u64,

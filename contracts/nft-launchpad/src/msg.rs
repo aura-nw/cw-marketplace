@@ -7,6 +7,8 @@ use crate::state::{LaunchpadInfo, PhaseConfigResponse, PhaseData};
 pub struct InstantiateMsg {
     pub random_seed: String,
     pub colection_code_id: u64,
+    pub launchpad_fee: u32,
+    pub launchpad_collector: Option<String>,
     pub collection_info: ColectionInfo,
 }
 
@@ -39,6 +41,9 @@ pub enum ExecuteMsg {
         phase_id: u64,
         amount: Option<u64>,
     },
+    Withdraw {
+        denom: String,
+    },
 }
 
 /// Message type for `migrate` entry_point
@@ -65,6 +70,7 @@ pub struct MintableResponse {
 
 #[cw_serde]
 pub struct ColectionInfo {
+    pub creator: String,
     pub name: String,
     pub symbol: String,
     pub max_supply: u64,

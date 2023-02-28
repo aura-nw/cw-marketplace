@@ -3,8 +3,9 @@ use std::vec;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, has_coins, to_binary, Addr, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Reply, ReplyOn, Response, StdResult, Storage, SubMsg, Timestamp, Uint128, WasmMsg,
+    coin, has_coins, to_binary, Addr, BalanceResponse, BankMsg, BankQuery, Binary, Coin, CosmosMsg,
+    Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdResult, Storage,
+    SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw2981_royalties::MintMsg;
@@ -37,7 +38,14 @@ pub fn instantiate(
 
     // save contract config
     let config = Config {
-        owner: info.sender.clone(),
+        admin: info.sender.clone(),
+        launchpad_collector: deps
+            .api
+            .addr_validate(
+                &msg.launchpad_collector
+                    .unwrap_or_else(|| info.sender.to_string()),
+            )
+            .unwrap(),
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -45,6 +53,10 @@ pub fn instantiate(
     LAUNCHPAD_INFO.save(
         deps.storage,
         &LaunchpadInfo {
+            creator: deps
+                .api
+                .addr_validate(&msg.collection_info.creator)
+                .unwrap(),
             collection_address: Addr::unchecked("".to_string()),
             first_phase_id: 0,
             last_phase_id: 0,
@@ -52,10 +64,8 @@ pub fn instantiate(
             total_supply: 0,
             uri_prefix: msg.collection_info.uri_prefix,
             max_supply: msg.collection_info.max_supply,
-            // set is_active to false by default, admin must activate it manually.
-            // After ativation, cannot add, update or remove phase.
-            // After ativation, cannot add or remove whitelist, too.
             is_active: false,
+            launchpad_fee: msg.launchpad_fee,
         },
     )?;
 
@@ -161,6 +171,7 @@ pub fn execute(
         ExecuteMsg::Mint { phase_id, amount } => mint(deps, env, info, phase_id, amount),
         ExecuteMsg::ActivateLaunchpad {} => active_launchpad(deps, info),
         ExecuteMsg::DeactivateLaunchpad {} => deactive_launchpad(deps, info),
+        ExecuteMsg::Withdraw { denom } => withdraw(deps, env, info, denom),
     }
 }
 
@@ -178,7 +189,7 @@ fn add_mint_phase(
 
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -309,7 +320,7 @@ pub fn update_mint_phase(
 
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -380,7 +391,7 @@ pub fn remove_mint_phase(
 
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -476,7 +487,7 @@ pub fn add_whitelist(
 
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -509,7 +520,7 @@ pub fn remove_whitelist(
 
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -642,7 +653,7 @@ pub fn mint(
 pub fn active_launchpad(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -664,7 +675,7 @@ pub fn active_launchpad(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
 pub fn deactive_launchpad(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
     // check if the sender is not the owner, then return error
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
+    if config.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -734,7 +745,6 @@ fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdRe
         .unwrap()
         .unwrap_or(position + 1);
 
-    println!("remaining_nfts: {} {}", remaining_nfts, position);
     // determine the id in the last position of the remaining_token_ids
     let last_token_id = REMAINING_TOKEN_IDS
         .may_load(storage, remaining_nfts - 1)
@@ -814,6 +824,75 @@ fn verify_phase_time(
     }
 
     true
+}
+
+pub fn withdraw(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    denom: String,
+) -> Result<Response, ContractError> {
+    // check if the sender is the creator of collection
+    let launchpad_info = LAUNCHPAD_INFO.load(deps.storage)?;
+    if info.sender != launchpad_info.creator {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // get the balance of contract in bank
+    let contract_balance: BalanceResponse =
+        deps.querier.query(&QueryRequest::Bank(BankQuery::Balance {
+            address: env.contract.address.to_string(),
+            denom: denom.clone(),
+        }))?;
+
+    // get the withdraw amount of creator
+    let creator_withdraw_amount = contract_balance
+        .amount
+        .amount
+        .checked_multiply_ratio(
+            100u32.checked_sub(launchpad_info.launchpad_fee).unwrap(),
+            100u32,
+        )
+        .unwrap();
+
+    // fee amount of launchpad is the rest of the contract balance
+    let launchpad_fee_amount = contract_balance
+        .amount
+        .amount
+        .checked_sub(creator_withdraw_amount)
+        .unwrap();
+
+    // load the launchpad_collector from contract config
+    let launchpad_collector = CONFIG.load(deps.storage)?.launchpad_collector;
+
+    // send the withdraw amount to the creator
+    let mut res: Response = Response::new()
+        .add_attribute("action", "withdraw")
+        .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: launchpad_info.creator.to_string(),
+            amount: vec![Coin {
+                denom: denom.clone(),
+                amount: creator_withdraw_amount,
+            }],
+        }))
+        .add_attribute("creator", launchpad_info.creator)
+        .add_attribute("withdraw_amount", creator_withdraw_amount);
+
+    // if the launchpad fee is not 0, then send the launchpad fee to the launchpad_collector
+    if launchpad_info.launchpad_fee != 0 {
+        res = res
+            .add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: launchpad_collector.to_string(),
+                amount: vec![Coin {
+                    denom,
+                    amount: launchpad_fee_amount,
+                }],
+            }))
+            .add_attribute("launchpad_collector", launchpad_collector)
+            .add_attribute("launchpad_fee_amount", launchpad_fee_amount);
+    }
+
+    Ok(res.add_attribute("withdraw_time", env.block.time.to_string()))
 }
 
 fn update_phases_config_response(deps: DepsMut) -> StdResult<()> {
