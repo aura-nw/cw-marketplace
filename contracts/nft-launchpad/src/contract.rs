@@ -58,12 +58,12 @@ pub fn instantiate(
                 .addr_validate(&msg.collection_info.creator)
                 .unwrap(),
             collection_address: Addr::unchecked("".to_string()),
-            first_phase_id: 0,
+            start_phase_id: 0,
             last_phase_id: 0,
             last_issued_id: 0,
             total_supply: 0,
             uri_prefix: msg.collection_info.uri_prefix,
-            uri_surfix: msg.collection_info.uri_surfix,
+            uri_suffix: msg.collection_info.uri_suffix,
             max_supply: msg.collection_info.max_supply,
             is_active: false,
             launchpad_fee: if msg.launchpad_fee < 100 {
@@ -621,7 +621,7 @@ pub fn mint(
         let token_uri = get_token_uri(
             &launchpad_info.uri_prefix,
             &token_id,
-            &launchpad_info.uri_surfix,
+            &launchpad_info.uri_suffix,
         );
 
         // create mint message NFT for the sender
@@ -761,10 +761,10 @@ fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdRe
     Ok(token_id.to_string())
 }
 
-fn get_token_uri(uri_prefix: &str, token_id: &str, uri_surfix: &str) -> String {
+fn get_token_uri(uri_prefix: &str, token_id: &str, uri_suffix: &str) -> String {
     // TODO: maybe we need the suffix of the token_uri, too
-    // the token_uri is the uri_prefix + token_id + uri_surfix
-    format!("{}{}{}", uri_prefix, token_id, uri_surfix)
+    // the token_uri is the uri_prefix + token_id + uri_suffix
+    format!("{}{}{}", uri_prefix, token_id, uri_suffix)
 }
 
 fn verify_phase_time(
@@ -911,7 +911,7 @@ fn is_launchpad_started(storage: &dyn Storage, env: &Env) -> bool {
 
     // load the first phase config. It is always the dummy phase with id 0
     let first_phase_config = PHASE_CONFIGS
-        .load(storage, launchpad_info.first_phase_id)
+        .load(storage, launchpad_info.start_phase_id)
         .unwrap();
 
     // load the real first phase id based on the dummy phase config

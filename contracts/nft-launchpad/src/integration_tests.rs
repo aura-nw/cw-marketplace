@@ -36,7 +36,7 @@ mod tests {
                     uri_prefix:
                         "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                             .to_string(),
-                    uri_surfix: ".json".to_string(),
+                    uri_suffix: ".json".to_string(),
                     creator: CREATOR.to_string(),
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
@@ -98,7 +98,7 @@ mod tests {
                     uri_prefix:
                         "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                             .to_string(),
-                    uri_surfix: ".json".to_string(),
+                    uri_suffix: ".json".to_string(),
                     creator: CREATOR.to_string(),
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
@@ -141,7 +141,7 @@ mod tests {
                 uri_prefix:
                     "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                         .to_string(),
-                uri_surfix: ".json".to_string(),
+                uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
@@ -183,7 +183,7 @@ mod tests {
                 uri_prefix:
                     "ipfs://bafybeifm3xas2egfbwzo7cg5wiayw44sbvfn6h5am2bydp2zpnypl7g5tq/images/"
                         .to_string(),
-                uri_surfix: ".json".to_string(),
+                uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"

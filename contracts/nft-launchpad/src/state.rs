@@ -53,8 +53,8 @@ pub struct LaunchpadInfo {
     pub total_supply: u64,
     pub max_supply: u64,
     pub uri_prefix: String,
-    pub uri_surfix: String,
-    pub first_phase_id: u64,
+    pub uri_suffix: String,
+    pub start_phase_id: u64,
     pub last_phase_id: u64,
     pub last_issued_id: u64, // for the unique id of phases
     pub is_active: bool,     // admin can update phases when launchpad is not active only
