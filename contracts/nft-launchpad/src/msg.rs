@@ -75,6 +75,7 @@ pub struct ColectionInfo {
     pub symbol: String,
     pub max_supply: u64,
     pub uri_prefix: String,
+    pub uri_surfix: String,
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
 }

@@ -39,7 +39,7 @@ The first 5 messages can be executed **only** when status of launchpad is `inact
 
 `AddMintPhase{after_phase_id, phase_data}` - This message allows admin add new *mint phase* to launchpad. 
 The **optional** parameter `after_phase_id` is used to determine the position of *mint phase* in the list of phases. 
-By default, new phase will be added to the end of the list.
+By default, new phase will be added to the end of the list. If a phase allows each user mints unlimited Nft, then the `max_nfts_per_address` value should be set equal to `max_supply`.
 
 A `phase_data` contains the following data for a new phase:
 ```rust

@@ -13,7 +13,7 @@ use cw2981_royalties::{
     msg::InstantiateMsg as Cw2981InstantiateMsg, ExecuteMsg as Cw2981ExecuteMsg,
 };
 use cw_utils::parse_reply_instantiate_data;
-use nois::{ints_in_range, randomness_from_str, sub_randomness_with_key};
+use nois::{int_in_range, randomness_from_str, sub_randomness_with_key};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
@@ -63,6 +63,7 @@ pub fn instantiate(
             last_issued_id: 0,
             total_supply: 0,
             uri_prefix: msg.collection_info.uri_prefix,
+            uri_surfix: msg.collection_info.uri_surfix,
             max_supply: msg.collection_info.max_supply,
             is_active: false,
             launchpad_fee: if msg.launchpad_fee < 100 {
@@ -188,7 +189,7 @@ fn add_mint_phase(
     phase_data: PhaseData,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage) {
+    if is_launchpad_started(deps.storage, &env) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -249,6 +250,13 @@ fn add_mint_phase(
             // update the next_phase_id of the previous_phase_config
             previous_phase_config.next_phase_id = Some(valid_phase_id);
             PHASE_CONFIGS.save(deps.storage, after_phase_id, &previous_phase_config)?;
+
+            // Update info of the next_phase_config
+            if let Some(next_phase_id) = next_phase_id {
+                let mut next_phase_config = PHASE_CONFIGS.load(deps.storage, next_phase_id)?;
+                next_phase_config.previous_phase_id = Some(valid_phase_id);
+                PHASE_CONFIGS.save(deps.storage, next_phase_id, &next_phase_config)?;
+            }
 
             // if the next_phase_id of the phase_config is none, then update the last_phase_id of the launchpad_info
             if phase_config_data.next_phase_id.is_none() {
@@ -314,7 +322,7 @@ pub fn update_mint_phase(
     phase_data: PhaseData,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage) {
+    if is_launchpad_started(deps.storage, &env) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -377,12 +385,12 @@ pub fn update_mint_phase(
 
 pub fn remove_mint_phase(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     phase_id: u64,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage) {
+    if is_launchpad_started(deps.storage, &env) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -466,13 +474,13 @@ pub fn remove_mint_phase(
 
 pub fn add_whitelist(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     phase_id: u64,
     whitelists: Vec<String>,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage) {
+    if is_launchpad_started(deps.storage, &env) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -499,13 +507,13 @@ pub fn add_whitelist(
 
 pub fn remove_whitelist(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     phase_id: u64,
     addresses: Vec<String>,
 ) -> Result<Response, ContractError> {
     // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage) {
+    if is_launchpad_started(deps.storage, &env) {
         return Err(ContractError::LaunchpadStarted {});
     }
 
@@ -517,10 +525,8 @@ pub fn remove_whitelist(
 
     // for each address in the whitelist input, remove the address from the whitelist of the phase_id
     for address in addresses {
-        // if the address is in the WHITELIST, then remove it from the WHITELIST
-        if WHITELIST.has(deps.storage, (phase_id, Addr::unchecked(address.clone()))) {
-            WHITELIST.remove(deps.storage, (phase_id, Addr::unchecked(address)));
-        }
+        // Remove it from the WHITELIST
+        WHITELIST.remove(deps.storage, (phase_id, Addr::unchecked(address)));
     }
 
     Ok(Response::new().add_attributes([("action", "remove_whitelist")]))
@@ -612,7 +618,11 @@ pub fn mint(
             generate_random_token_id(deps.storage, current_time, info.sender.to_string()).unwrap();
 
         // get the token_uri based on the token_id
-        let token_uri = get_token_uri(&launchpad_info.uri_prefix, &token_id);
+        let token_uri = get_token_uri(
+            &launchpad_info.uri_prefix,
+            &token_id,
+            &launchpad_info.uri_surfix,
+        );
 
         // create mint message NFT for the sender
         let mint_msg = WasmMsg::Execute {
@@ -716,8 +726,7 @@ fn generate_random_token_id(
     // if the number of remaining nfts is greater then 1, then we will choose a random position
     if remaining_nfts > 1 {
         // random a number from 0 to remaining_nfts-1
-        let random_positions = ints_in_range(randomness, 1, 0, remaining_nfts - 1);
-        token_id_position = random_positions[0];
+        token_id_position = int_in_range(randomness, 0, remaining_nfts - 1);
     }
 
     get_token_id_from_position(storage, token_id_position)
@@ -752,10 +761,10 @@ fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdRe
     Ok(token_id.to_string())
 }
 
-fn get_token_uri(uri_prefix: &str, token_id: &str) -> String {
+fn get_token_uri(uri_prefix: &str, token_id: &str, uri_surfix: &str) -> String {
     // TODO: maybe we need the suffix of the token_uri, too
-    // the token_uri is the uri_prefix + token_id
-    format!("{}{}", uri_prefix, token_id)
+    // the token_uri is the uri_prefix + token_id + uri_surfix
+    format!("{}{}{}", uri_prefix, token_id, uri_surfix)
 }
 
 fn verify_phase_time(
@@ -896,11 +905,25 @@ pub fn withdraw(
 }
 
 // we need a function to check when the launchpad started
-fn is_launchpad_started(storage: &dyn Storage) -> bool {
+fn is_launchpad_started(storage: &dyn Storage, env: &Env) -> bool {
     // load the status of the launchpad
     let launchpad_info = LAUNCHPAD_INFO.load(storage).unwrap();
 
-    launchpad_info.is_active
+    // load the first phase config. It is always the dummy phase with id 0
+    let first_phase_config = PHASE_CONFIGS
+        .load(storage, launchpad_info.first_phase_id)
+        .unwrap();
+
+    // load the real first phase id based on the dummy phase config
+    if let Some(real_first_phase_id) = first_phase_config.next_phase_id {
+        // load the real first phase config
+        let real_first_phase_config = PHASE_CONFIGS.load(storage, real_first_phase_id).unwrap();
+
+        // check if the current time is less than the start time of the real first phase config
+        (env.block.time >= real_first_phase_config.start_time) || launchpad_info.is_active
+    } else {
+        launchpad_info.is_active
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -929,7 +952,8 @@ pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>
     // create an empty PHASE_CONFIGS_RESPONSE
     let mut phase_configs_response: Vec<PhaseConfigResponse> = vec![];
 
-    // from phase_id 0, loop through all the phase_configs, while the next_phase_id is not None
+    // begin from phase_id 0, loop through all the phase_configs,
+    // until the phase_id is different from the last_phase_id
     while phase_id != last_phase_id {
         // get the next phase id
         phase_id = phase_config.next_phase_id.unwrap();
@@ -965,7 +989,8 @@ pub fn query_mintable(deps: Deps, user: Addr) -> StdResult<Vec<MintableResponse>
     // create an empty mintable response vector
     let mut mintable_response: Vec<MintableResponse> = vec![];
 
-    // from phase_id 0, loop through all the phase_configs, while the next_phase_id is not None
+    // begin from phase_id 0, loop through all the phase_configs,
+    // until the phase_id is different from the last_phase_id
     while phase_id != last_phase_id {
         // get the next phase id
         phase_id = phase_config.next_phase_id.unwrap();
