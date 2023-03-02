@@ -242,7 +242,7 @@ fn add_mint_phase(
                 max_supply: phase_data.max_supply,
                 total_supply: 0,
                 max_nfts_per_address: phase_data.max_nfts_per_address,
-                price: phase_data.price,
+                price: phase_data.price.clone(),
                 is_public: phase_data.is_public,
             };
             PHASE_CONFIGS.save(deps.storage, valid_phase_id, &phase_config_data)?;
@@ -293,7 +293,7 @@ fn add_mint_phase(
                 max_supply: phase_data.max_supply,
                 total_supply: 0,
                 max_nfts_per_address: phase_data.max_nfts_per_address,
-                price: phase_data.price,
+                price: phase_data.price.clone(),
                 is_public: phase_data.is_public,
             };
             PHASE_CONFIGS.save(deps.storage, valid_phase_id, &phase_config_data)?;
@@ -310,7 +310,22 @@ fn add_mint_phase(
         }
     }
 
-    Ok(Response::new())
+    Ok(Response::new().add_attributes([
+        ("action", "add_mint_phase"),
+        ("phase_id", &valid_phase_id.to_string()),
+        ("start_time", &phase_data.start_time.to_string()),
+        ("end_time", &phase_data.end_time.to_string()),
+        (
+            "max_supply",
+            &phase_data.max_supply.unwrap_or(0).to_string(),
+        ),
+        (
+            "max_nfts_per_address",
+            &phase_data.max_nfts_per_address.to_string(),
+        ),
+        ("price", &phase_data.price.amount.to_string()),
+        ("is_public", &phase_data.is_public.to_string()),
+    ]))
 }
 
 // update the mint phase with the phase_id
