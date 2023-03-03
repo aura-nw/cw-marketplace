@@ -310,17 +310,15 @@ fn add_mint_phase(
         }
     }
 
-    let mut max_supply = "unlimited".to_string();
-    if phase_data.max_supply.is_some() {
-        max_supply = phase_data.max_supply.unwrap().to_string()
-    };
-
     Ok(Response::new().add_attributes([
         ("action", "add_mint_phase"),
         ("phase_id", &valid_phase_id.to_string()),
         ("start_time", &phase_data.start_time.to_string()),
         ("end_time", &phase_data.end_time.to_string()),
-        ("max_supply", &max_supply),
+        (
+            "max_supply",
+            &phase_data.max_supply.unwrap_or(0).to_string(),
+        ),
         (
             "max_nfts_per_address",
             &phase_data.max_nfts_per_address.to_string(),
@@ -387,17 +385,15 @@ pub fn update_mint_phase(
         },
     )?;
 
-    let mut max_supply = "unlimited".to_string();
-    if phase_data.max_supply.is_some() {
-        max_supply = phase_data.max_supply.unwrap().to_string()
-    };
-
     Ok(Response::new().add_attributes([
         ("action", "update_mint_phase"),
         ("phase_id", &phase_id.to_string()),
         ("start_time", &phase_data.start_time.to_string()),
         ("end_time", &phase_data.end_time.to_string()),
-        ("max_supply", &max_supply),
+        (
+            "max_supply",
+            &phase_data.max_supply.unwrap_or(0).to_string(),
+        ),
         (
             "max_nfts_per_address",
             &phase_data.max_nfts_per_address.to_string(),
