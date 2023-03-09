@@ -888,217 +888,6 @@ mod listing {
     }
 }
 
-// fn create_offer(
-//     deps: DepsMut,
-//     sender: &str,
-//     contract_address: Addr,
-//     token_id: Option<String>,
-//     funds_amount: u128,
-//     end_time: Cw20Expiration,
-// ) -> Result<Response, ContractError> {
-//     let msg = ExecuteMsg::OfferNft {
-//         nft: NFT {
-//             contract_address,
-//             token_id,
-//         },
-//         funds_amount,
-//         end_time,
-//     };
-//     let info = mock_info(sender, &coins(1000, "uaura"));
-//     execute(deps, mock_env(), info, msg)
-// }
-
-// fn accept_offer(
-//     deps: DepsMut,
-//     sender: &str,
-//     offerer: &str,
-//     contract_address: Addr,
-//     token_id: Option<String>,
-// ) -> Result<Response, ContractError> {
-//     let msg = ExecuteMsg::AcceptNftOffer {
-//         offerer: offerer.to_string(),
-//         nft: NFT {
-//             contract_address,
-//             token_id,
-//         },
-//     };
-//     let info = mock_info(sender, &coins(1000, "uaura"));
-//     execute(deps, mock_env(), info, msg)
-// }
-
-mod create_offer {
-    // use super::*;
-
-    // // test offer a specific nft
-    // #[test]
-    // fn test_offer_nft() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OFFERER_1,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         Some(MOCK_OFFER_NFT_TOKEN_ID_1.to_string()),
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.plus_seconds(1000)),
-    //     );
-    //     println!("Response: {:?}", &response);
-    //     assert!(response.is_ok());
-    // }
-
-    // // test user can accept offer
-    // #[test]
-    // fn user_can_not_offer_invalid_nft() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OFFERER_1,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         Some(MOCK_OFFER_NFT_TOKEN_ID_INVALID.to_string()),
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.plus_seconds(1000)),
-    //     );
-    //     assert_eq!(
-    //         response.err().unwrap().to_string(),
-    //         ContractError::CustomError {
-    //             val: "Nft not exist".to_string()
-    //         }
-    //         .to_string()
-    //     );
-    // }
-
-    // // cannot offer the owned nft
-    // #[test]
-    // fn cannot_offer_owned_nft() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OWNER,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         Some(MOCK_OFFER_NFT_TOKEN_ID_1.to_string()),
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.plus_seconds(1000)),
-    //     );
-    //     assert_eq!(
-    //         response.err().unwrap().to_string(),
-    //         ContractError::CustomError {
-    //             val: "Cannot offer owned nft".to_string()
-    //         }
-    //         .to_string()
-    //     );
-    // }
-
-    // // cannot offer without token id
-    // #[test]
-    // fn cannot_offer_without_token_id() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OFFERER_1,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         None,
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.plus_seconds(1000)),
-    //     );
-    //     assert_eq!(
-    //         response.err().unwrap().to_string(),
-    //         ContractError::CustomError {
-    //             val: "Collection offer is not supported".to_string()
-    //         }
-    //         .to_string()
-    //     );
-    // }
-
-    // // cannot offer with insufficient allowance funds
-    // #[test]
-    // fn cannot_offer_with_insufficient_allowance_funds() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OFFERER_INSUFFICIENT_ALLOWANCE,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         Some(MOCK_OFFER_NFT_TOKEN_ID_1.to_string()),
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.plus_seconds(1000)),
-    //     );
-    //     assert_eq!(
-    //         response.err().unwrap().to_string(),
-    //         ContractError::InsufficientAllowance {}.to_string()
-    //     );
-    // }
-
-    // // cannot offer with insufficient balance funds
-    // #[test]
-    // fn cannot_offer_with_insufficient_balance_funds() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OFFERER_INSUFFICIENT_BALANCE,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         Some(MOCK_OFFER_NFT_TOKEN_ID_1.to_string()),
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.plus_seconds(1000)),
-    //     );
-    //     assert_eq!(
-    //         response.err().unwrap().to_string(),
-    //         ContractError::InsufficientBalance {}.to_string()
-    //     );
-    // }
-
-    // // cannot offer with invalid expiration
-    // #[test]
-    // fn cannot_offer_with_invalid_expiration() {
-    //     // prepare deps for test
-    //     let mut deps = mock_deps();
-
-    //     // get block time from mock env
-    //     let block_time = mock_env().block.time;
-
-    //     let response = create_offer(
-    //         deps.as_mut(),
-    //         MOCK_OFFER_NFT_OFFERER_1,
-    //         Addr::unchecked(MOCK_CW2981_ADDR),
-    //         Some(MOCK_OFFER_NFT_TOKEN_ID_1.to_string()),
-    //         10000000,
-    //         Cw20Expiration::AtTime(block_time.minus_seconds(1_000)),
-    //     );
-
-    //     assert_eq!(
-    //         response.err().unwrap().to_string(),
-    //         ContractError::InvalidEndTime {}.to_string()
-    //     );
-    // }
-}
-
 mod convert_and_revert_native {
 
     use super::*;
@@ -1107,7 +896,7 @@ mod convert_and_revert_native {
     #[test]
     fn user_cannot_convert_native_because_not_valid_denom() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw20_address = contracts[2].contract_addr.clone();
 
         // Mint 1000000000 native token to USER_1
@@ -1169,7 +958,7 @@ mod convert_and_revert_native {
     #[test]
     fn user_can_convert_native_token_success() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw20_address = contracts[2].contract_addr.clone();
 
         // Mint 1000000000 native token to USER_1
@@ -1246,7 +1035,7 @@ mod convert_and_revert_native {
     #[test]
     fn user_can_revert_native_token_success() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw20_address = contracts[2].contract_addr.clone();
 
         // Mint 1000000000 native token to USER_1
@@ -1324,7 +1113,7 @@ mod accept_offer {
     #[test]
     fn owner_can_accept_offer_new() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw2981_address = contracts[0].contract_addr.clone();
         let marketplace_address = contracts[1].contract_addr.clone();
         let cw20_address = contracts[2].contract_addr.clone();
@@ -1512,7 +1301,7 @@ mod cancel_offer {
     #[test]
     fn user_can_cancel_their_offer() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw2981_address = contracts[0].contract_addr.clone();
         let marketplace_address = contracts[1].contract_addr.clone();
         let cw20_address = contracts[2].contract_addr.clone();

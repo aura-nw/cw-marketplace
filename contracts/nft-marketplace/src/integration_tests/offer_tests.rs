@@ -74,7 +74,7 @@ mod accept_offer {
     #[test]
     fn nft_owner_can_accept_offer() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(false);
         let cw2981_address = contracts[0].contract_addr.clone();
         let marketplace_address = contracts[1].contract_addr.clone();
         let cw20_address = contracts[2].contract_addr.clone();
@@ -247,7 +247,7 @@ mod accept_offer {
     #[test]
     fn royalty_with_offer() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw2981_address = contracts[0].contract_addr.clone();
         let marketplace_address = contracts[1].contract_addr.clone();
         let cw20_address = contracts[2].contract_addr.clone();
@@ -379,7 +379,7 @@ mod accept_offer {
     #[test]
     fn remove_listing_after_accept_offer() {
         // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
+        let (mut app, contracts) = instantiate_contracts(true);
         let cw2981_address = contracts[0].contract_addr.clone();
         let marketplace_address = contracts[1].contract_addr.clone();
         let cw20_address = contracts[2].contract_addr.clone();
