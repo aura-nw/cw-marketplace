@@ -613,9 +613,21 @@ pub fn mint(
     // mint NFT(s) for the sender
     let mut res: Response = Response::new();
     for _ in 0..amount_nfts {
+        // get the number of remaining nfts launchpad
+        let remaining_nfts = launchpad_info.max_supply - launchpad_info.total_supply;
+
         // generate random token_id
-        let token_id =
-            generate_random_token_id(deps.storage, current_time, info.sender.to_string()).unwrap();
+        let token_id = generate_random_token_id(
+            deps.storage,
+            current_time,
+            info.sender.to_string(),
+            remaining_nfts,
+        )
+        .unwrap();
+
+        // Move the increasing total supply of the the launchpad to here.
+        // This ensures that the remaining NFTs is always updated.
+        launchpad_info.total_supply += 1;
 
         // get the token_uri based on the token_id
         let token_uri = get_token_uri(
@@ -639,8 +651,7 @@ pub fn mint(
         res = res.add_message(mint_msg);
     }
 
-    // increase the total supply of the the launchpad
-    launchpad_info.total_supply += amount_nfts;
+    // save the launchpad info
     LAUNCHPAD_INFO.save(deps.storage, &launchpad_info)?;
 
     Ok(res.add_attributes([
@@ -699,6 +710,7 @@ fn generate_random_token_id(
     storage: &mut dyn Storage,
     current_time: Timestamp,
     sender: String,
+    number_remaining_nfts: u64,
 ) -> StdResult<String> {
     // load RANDOM_SEED from the storage
     let random_seed = RANDOM_SEED.load(storage).unwrap();
@@ -708,10 +720,6 @@ fn generate_random_token_id(
 
     // define random provider from the random_seed
     let mut provider = sub_randomness_with_key(random_seed, key);
-
-    // get the number of remaining nfts launchpad
-    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(storage).unwrap();
-    let remaining_nfts = launchpad_info.max_supply - launchpad_info.total_supply;
 
     // random a new random_seed
     let new_random_seed = provider.provide();
@@ -724,19 +732,19 @@ fn generate_random_token_id(
     let mut token_id_position = 0;
 
     // if the number of remaining nfts is greater then 1, then we will choose a random position
-    if remaining_nfts > 1 {
+    if number_remaining_nfts > 1 {
         // random a number from 0 to remaining_nfts-1
-        token_id_position = int_in_range(randomness, 0, remaining_nfts - 1);
+        token_id_position = int_in_range(randomness, 0, number_remaining_nfts - 1);
     }
 
-    get_token_id_from_position(storage, token_id_position)
+    get_token_id_from_position(storage, token_id_position, number_remaining_nfts)
 }
 
-fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdResult<String> {
-    // get the number of remaining nfts launchpad
-    let launchpad_info: LaunchpadInfo = LAUNCHPAD_INFO.load(storage).unwrap();
-    let remaining_nfts = launchpad_info.max_supply - launchpad_info.total_supply;
-
+fn get_token_id_from_position(
+    storage: &mut dyn Storage,
+    position: u64,
+    number_remaining_nfts: u64,
+) -> StdResult<String> {
     // get the current token_id at the token_id_position
     // if the token_id at the token_id_position is equal 0, then return its position
     // else, return the token_id at the token_id_position
@@ -747,15 +755,15 @@ fn get_token_id_from_position(storage: &mut dyn Storage, position: u64) -> StdRe
 
     // determine the id in the last position of the remaining_token_ids
     let last_token_id = REMAINING_TOKEN_IDS
-        .may_load(storage, remaining_nfts - 1)
+        .may_load(storage, number_remaining_nfts - 1)
         .unwrap()
-        .unwrap_or(remaining_nfts);
+        .unwrap_or(number_remaining_nfts);
 
     // now, swap the token_id with the last_token_id in the remaining_token_ids
     REMAINING_TOKEN_IDS.save(storage, position, &last_token_id)?;
 
     // remove the last item of the remaining_token_ids
-    REMAINING_TOKEN_IDS.remove(storage, remaining_nfts - 1);
+    REMAINING_TOKEN_IDS.remove(storage, number_remaining_nfts - 1);
 
     // return the token_id
     Ok(token_id.to_string())
