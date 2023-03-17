@@ -249,7 +249,7 @@ pub mod env {
             contract_code_id,
         });
 
-        if !is_completed {
+        if is_completed {
             // set the vaura token address in the marketplace contract
             let set_vaura_token_msg = MarketPlaceExecuteMsg::EditVauraToken {
                 token_address: contract_addr.to_string(),

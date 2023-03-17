@@ -117,6 +117,31 @@ mod accept_offer {
             cw2981_address.clone(),
             marketplace_address.clone(),
         );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "VAura address not set"
+        );
+
+        // set VAura address
+        let set_vaura_address_msg = ExecuteMsg::EditVauraToken {
+            token_address: cw20_address.clone(),
+        };
+        let res = app.execute_contract(
+            Addr::unchecked(OWNER.to_string()),
+            Addr::unchecked(marketplace_address.clone()),
+            &set_vaura_address_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // create offer again
+        let res = create_offer(
+            &mut app,
+            MOCK_OFFER_NFT_TOKEN_ID_1,
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
         assert!(res.is_ok());
 
         let res = create_offer(
