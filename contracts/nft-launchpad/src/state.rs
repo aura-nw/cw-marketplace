@@ -38,7 +38,7 @@ pub struct PhaseConfigResponse {
     pub phase_id: u64,
     pub start_time: Timestamp,
     pub end_time: Timestamp,
-    pub max_supply: Option<u64>,
+    pub max_supply: u64,
     pub total_supply: u64,
     pub max_nfts_per_address: u64,
     pub price: Coin,
