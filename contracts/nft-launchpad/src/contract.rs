@@ -317,7 +317,10 @@ fn add_mint_phase(
         ("end_time", &phase_data.end_time.to_string()),
         (
             "max_supply",
-            &phase_data.max_supply.unwrap_or(0).to_string(),
+            &phase_data
+                .max_supply
+                .unwrap_or(launchpad_info.max_supply)
+                .to_string(),
         ),
         (
             "max_nfts_per_address",
@@ -392,7 +395,10 @@ pub fn update_mint_phase(
         ("end_time", &phase_data.end_time.to_string()),
         (
             "max_supply",
-            &phase_data.max_supply.unwrap_or(0).to_string(),
+            &phase_data
+                .max_supply
+                .unwrap_or(LAUNCHPAD_INFO.load(deps.storage).unwrap().max_supply)
+                .to_string(),
         ),
         (
             "max_nfts_per_address",
@@ -962,8 +968,10 @@ pub fn query_launchpad_info(deps: Deps) -> StdResult<LaunchpadInfo> {
 }
 
 pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>> {
+    let launchpad_info = LAUNCHPAD_INFO.load(deps.storage).unwrap();
+
     // load the last_phase_id
-    let last_phase_id = LAUNCHPAD_INFO.load(deps.storage).unwrap().last_phase_id;
+    let last_phase_id = launchpad_info.last_phase_id;
 
     let mut phase_id = 0;
 
@@ -987,7 +995,7 @@ pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>
             phase_id,
             start_time: phase_config.start_time,
             end_time: phase_config.end_time,
-            max_supply: phase_config.max_supply,
+            max_supply: phase_config.max_supply.unwrap_or(launchpad_info.max_supply),
             total_supply: phase_config.total_supply,
             max_nfts_per_address: phase_config.max_nfts_per_address,
             price: phase_config.price,
