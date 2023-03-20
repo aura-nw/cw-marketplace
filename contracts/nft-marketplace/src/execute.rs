@@ -467,7 +467,7 @@ impl MarketplaceContract<'static> {
                             contract_address: _,
                             amount,
                         } => {
-                            if funds_amount < *amount {
+                            if funds_amount != *amount {
                                 return Err(ContractError::CustomError {
                                     val: ("Insufficient funds".to_string()),
                                 });
