@@ -1,9 +1,12 @@
+pub mod execute;
 pub mod msg;
 pub mod query;
 
 #[cfg(test)]
 pub mod test;
 
+use execute::distribute_nfts;
+use msg::Cw2981ExecuteMsg;
 pub use query::{check_royalties, query_royalties_info};
 
 use cosmwasm_schema::cw_serde;
@@ -14,6 +17,7 @@ pub use cw721_base::{
     ContractError, InstantiateMsg as Cw721InstantiateMsg, MintMsg, MinterResponse,
 };
 use cw_storage_plus::Item;
+// use sha2::{Digest, Sha256};
 
 use crate::msg::{Cw2981QueryMsg, InstantiateMsg};
 
@@ -54,10 +58,18 @@ pub struct Metadata {
 }
 
 #[cw_serde]
+pub struct ProvenanceInfo {
+    pub final_proof: String,
+    pub elements_proof: String,
+    pub token_uri_anchor: u32,
+}
+
+#[cw_serde]
 #[derive(Default)]
 pub struct Config {
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
+    pub provenance: Option<ProvenanceInfo>, // we add some extra fields here for the proofs of provenance minting
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -66,8 +78,8 @@ pub type Extension = Option<Metadata>;
 
 pub type MintExtension = Option<Extension>;
 
-pub type Cw2981Contract<'a> = Cw721Contract<'a, Extension, Empty, Empty, Cw2981QueryMsg>;
-pub type ExecuteMsg = cw721_base::ExecuteMsg<Extension, Empty>;
+pub type Cw2981Contract<'a> = Cw721Contract<'a, Extension, Empty, Cw2981ExecuteMsg, Cw2981QueryMsg>;
+pub type ExecuteMsg = cw721_base::ExecuteMsg<Extension, Cw2981ExecuteMsg>;
 pub type QueryMsg = cw721_base::QueryMsg<Cw2981QueryMsg>;
 
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -99,12 +111,23 @@ pub fn instantiate(
         }
     }
 
+    let provenance = if msg.final_proof.is_some() {
+        Some(ProvenanceInfo {
+            final_proof: msg.final_proof.unwrap(),
+            elements_proof: "".to_string(), // the proof of all elements will be provided later when distributing the NFTs
+            token_uri_anchor: 0, // the anchor will be provided later when distributing the NFTs
+        })
+    } else {
+        None
+    };
+
     // set royalty_percentage and royalty_payment_address
     CONFIG.save(
         deps.storage,
         &Config {
             royalty_percentage: msg.royalty_percentage,
             royalty_payment_address: msg.royalty_payment_address,
+            provenance,
         },
     )?;
 
@@ -148,6 +171,11 @@ pub fn execute(
                 cw721_base::ExecuteMsg::Mint(msg_with_royalty),
             )
         }
+        ExecuteMsg::Extension { msg } => match msg {
+            Cw2981ExecuteMsg::DistributeNfts { elements_proof } => {
+                distribute_nfts(deps, env, info, elements_proof)
+            }
+        },
         _ => Cw2981Contract::default().execute(deps, env, info, msg),
     }
 }
@@ -162,6 +190,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             } => to_binary(&query_royalties_info(deps, token_id, sale_price)?),
             Cw2981QueryMsg::CheckRoyalties {} => to_binary(&check_royalties(deps)?),
         },
+        // we will override the default
         _ => Cw2981Contract::default().query(deps, env, msg),
     }
 }

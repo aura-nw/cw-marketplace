@@ -105,6 +105,7 @@ pub fn instantiate(
                     minter: env.contract.address.to_string(),
                     royalty_percentage: msg.collection_info.royalty_percentage,
                     royalty_payment_address: msg.collection_info.royalty_payment_address,
+                    final_proof: msg.collection_info.final_proof,
                 })?,
             }),
             reply_on: ReplyOn::Success,
@@ -634,19 +635,28 @@ pub fn mint(
             )
             .unwrap()
         } else {
-            launchpad_info.total_supply.to_string()
+            (launchpad_info.total_supply + 1).to_string()
         };
 
         // Move the increasing total supply of the the launchpad to here.
         // This ensures that the remaining NFTs is always updated.
         launchpad_info.total_supply += 1;
 
+        // if the random_seed is not empty, then we will generate the token_uri based on the gerenated token_id
+        // else we will pass a template token_uri to mint message
         // get the token_uri based on the token_id
-        let token_uri = get_token_uri(
-            &launchpad_info.uri_prefix,
-            &token_id,
-            &launchpad_info.uri_suffix,
-        );
+        let token_uri = if random_seed != [0u8; 32] {
+            get_token_uri(
+                &launchpad_info.uri_prefix,
+                &token_id,
+                &launchpad_info.uri_suffix,
+            )
+        } else {
+            format!(
+                "{}{{token_id}}{}",
+                launchpad_info.uri_prefix, launchpad_info.uri_suffix
+            )
+        };
 
         // create mint message NFT for the sender
         let mint_msg = WasmMsg::Execute {

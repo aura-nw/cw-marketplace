@@ -38,6 +38,7 @@ mod tests {
                             .to_string(),
                     uri_suffix: ".json".to_string(),
                     creator: CREATOR.to_string(),
+                    final_proof: None,
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
                     .to_string(),
@@ -100,6 +101,7 @@ mod tests {
                             .to_string(),
                     uri_suffix: ".json".to_string(),
                     creator: CREATOR.to_string(),
+                    final_proof: None,
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
                     .to_string(),
@@ -143,6 +145,7 @@ mod tests {
                         .to_string(),
                 uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
+                final_proof: None,
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
@@ -185,6 +188,7 @@ mod tests {
                         .to_string(),
                 uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
+                final_proof: None,
             },
             random_seed: "".to_string(),
 
@@ -227,6 +231,7 @@ mod tests {
                         .to_string(),
                 uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
+                final_proof: None,
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
@@ -2637,8 +2642,8 @@ mod tests {
 
             // assert tpken_ids array correct
             let expected_ids = [
-                "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
-                "15", "16", "17", "18", "19",
+                "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15",
+                "16", "17", "18", "19", "20",
             ]
             .to_vec();
             assert_eq!(token_ids, expected_ids);

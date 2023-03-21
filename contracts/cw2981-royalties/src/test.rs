@@ -25,6 +25,7 @@ fn use_metadata_extension() {
         minter: CREATOR.to_string(),
         royalty_percentage: Some(50),
         royalty_payment_address: Some("john".to_string()),
+        final_proof: None,
     };
     instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -69,6 +70,7 @@ fn validate_royalty_information() {
         minter: CREATOR.to_string(),
         royalty_percentage: Some(101),
         royalty_payment_address: Some("john".to_string()),
+        final_proof: None,
     };
     // instantiate will fail
     let res = instantiate(deps.as_mut(), mock_env(), info, init_msg);
@@ -87,6 +89,7 @@ fn not_allow_setting_royalty_when_minting() {
         minter: CREATOR.to_string(),
         royalty_percentage: Some(50),
         royalty_payment_address: Some("john".to_string()),
+        final_proof: None,
     };
     instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -121,6 +124,7 @@ fn check_royalties_response() {
         minter: CREATOR.to_string(),
         royalty_percentage: Some(50),
         royalty_payment_address: Some("john".to_string()),
+        final_proof: None,
     };
     instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -166,6 +170,7 @@ fn check_token_royalties() {
         minter: CREATOR.to_string(),
         royalty_percentage: Some(10),
         royalty_payment_address: Some(royalty_payment_address.clone()),
+        final_proof: None,
     };
     instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -244,6 +249,7 @@ fn check_token_without_royalties() {
         minter: CREATOR.to_string(),
         royalty_percentage: None,
         royalty_payment_address: None,
+        final_proof: None,
     };
     instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -291,6 +297,7 @@ fn check_token_without_extension() {
         minter: CREATOR.to_string(),
         royalty_percentage: None,
         royalty_payment_address: None,
+        final_proof: None,
     };
     instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
