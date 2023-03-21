@@ -1,6 +1,12 @@
+pub mod execute;
 pub mod msg;
 pub mod query;
 
+#[cfg(test)]
+pub mod test;
+
+use execute::distribute_nfts;
+use msg::Cw2981ExecuteMsg;
 pub use query::{check_royalties, query_royalties_info};
 
 use cosmwasm_schema::cw_serde;
@@ -11,6 +17,7 @@ pub use cw721_base::{
     ContractError, InstantiateMsg as Cw721InstantiateMsg, MintMsg, MinterResponse,
 };
 use cw_storage_plus::Item;
+// use sha2::{Digest, Sha256};
 
 use crate::msg::{Cw2981QueryMsg, InstantiateMsg};
 
@@ -51,10 +58,18 @@ pub struct Metadata {
 }
 
 #[cw_serde]
+pub struct ProvenanceInfo {
+    pub final_proof: String,
+    pub elements_proof: String,
+    pub token_uri_anchor: u32,
+}
+
+#[cw_serde]
 #[derive(Default)]
 pub struct Config {
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
+    pub provenance: Option<ProvenanceInfo>, // we add some extra fields here for the proofs of provenance minting
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -63,8 +78,8 @@ pub type Extension = Option<Metadata>;
 
 pub type MintExtension = Option<Extension>;
 
-pub type Cw2981Contract<'a> = Cw721Contract<'a, Extension, Empty, Empty, Cw2981QueryMsg>;
-pub type ExecuteMsg = cw721_base::ExecuteMsg<Extension, Empty>;
+pub type Cw2981Contract<'a> = Cw721Contract<'a, Extension, Empty, Cw2981ExecuteMsg, Cw2981QueryMsg>;
+pub type ExecuteMsg = cw721_base::ExecuteMsg<Extension, Cw2981ExecuteMsg>;
 pub type QueryMsg = cw721_base::QueryMsg<Cw2981QueryMsg>;
 
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
@@ -96,12 +111,23 @@ pub fn instantiate(
         }
     }
 
+    let provenance = if msg.final_proof.is_some() {
+        Some(ProvenanceInfo {
+            final_proof: msg.final_proof.unwrap(),
+            elements_proof: "".to_string(), // the proof of all elements will be provided later when distributing the NFTs
+            token_uri_anchor: 0, // the anchor will be provided later when distributing the NFTs
+        })
+    } else {
+        None
+    };
+
     // set royalty_percentage and royalty_payment_address
     CONFIG.save(
         deps.storage,
         &Config {
             royalty_percentage: msg.royalty_percentage,
             royalty_payment_address: msg.royalty_payment_address,
+            provenance,
         },
     )?;
 
@@ -145,6 +171,11 @@ pub fn execute(
                 cw721_base::ExecuteMsg::Mint(msg_with_royalty),
             )
         }
+        ExecuteMsg::Extension { msg } => match msg {
+            Cw2981ExecuteMsg::DistributeNfts { elements_proof } => {
+                distribute_nfts(deps, env, info, elements_proof)
+            }
+        },
         _ => Cw2981Contract::default().execute(deps, env, info, msg),
     }
 }
@@ -159,333 +190,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             } => to_binary(&query_royalties_info(deps, token_id, sale_price)?),
             Cw2981QueryMsg::CheckRoyalties {} => to_binary(&check_royalties(deps)?),
         },
+        // we will override the default
         _ => Cw2981Contract::default().query(deps, env, msg),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::msg::{CheckRoyaltiesResponse, RoyaltiesInfoResponse};
-
-    use cosmwasm_std::{from_binary, Uint128};
-
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cw721::Cw721Query;
-
-    const CREATOR: &str = "creator";
-
-    #[test]
-    fn use_metadata_extension() {
-        let mut deps = mock_dependencies();
-        let contract = Cw2981Contract::default();
-
-        let info = mock_info(CREATOR, &[]);
-        // let royalty_percentage = 101
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: Some(50),
-            royalty_payment_address: Some("john".to_string()),
-        };
-        instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
-
-        let expected_extension = Some(Metadata {
-            description: Some("Spaceship with Warp Drive".into()),
-            name: Some("Starship USS Enterprise".to_string()),
-            royalty_percentage: Some(50),
-            royalty_payment_address: Some("john".to_string()),
-            ..Metadata::default()
-        });
-
-        let token_id = "Enterprise";
-        let mint_msg = MintMsg {
-            token_id: token_id.to_string(),
-            owner: "john".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Some(Metadata {
-                description: Some("Spaceship with Warp Drive".into()),
-                name: Some("Starship USS Enterprise".to_string()),
-                ..Metadata::default()
-            }),
-        };
-
-        let exec_msg = ExecuteMsg::Mint(mint_msg.clone());
-        execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
-
-        let res = contract.nft_info(deps.as_ref(), token_id.into()).unwrap();
-        assert_eq!(res.token_uri, mint_msg.token_uri);
-        assert_eq!(res.extension, expected_extension);
-    }
-
-    #[test]
-    fn validate_royalty_information() {
-        let mut deps = mock_dependencies();
-        let _contract = Cw2981Contract::default();
-
-        let info = mock_info(CREATOR, &[]);
-        // let royalty_percentage = 101
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: Some(101),
-            royalty_payment_address: Some("john".to_string()),
-        };
-        // instantiate will fail
-        let res = instantiate(deps.as_mut(), mock_env(), info, init_msg);
-        assert!(res.is_err());
-    }
-
-    #[test]
-    fn not_allow_setting_royalty_when_minting() {
-        let mut deps = mock_dependencies();
-        let _contract = Cw2981Contract::default();
-
-        let info = mock_info(CREATOR, &[]);
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: Some(50),
-            royalty_payment_address: Some("john".to_string()),
-        };
-        instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
-
-        let token_id = "Enterprise";
-        let mint_msg = MintMsg {
-            token_id: token_id.to_string(),
-            owner: "john".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Some(Metadata {
-                description: Some("Spaceship with Warp Drive".into()),
-                name: Some("Starship USS Enterprise".to_string()),
-                royalty_percentage: Some(50),
-                royalty_payment_address: Some("john".to_string()),
-                ..Metadata::default()
-            }),
-        };
-
-        let exec_msg = ExecuteMsg::Mint(mint_msg);
-        let res = execute(deps.as_mut(), mock_env(), info, exec_msg);
-        assert!(res.is_err());
-    }
-
-    #[test]
-    fn check_royalties_response() {
-        let mut deps = mock_dependencies();
-        let _contract = Cw2981Contract::default();
-
-        let info = mock_info(CREATOR, &[]);
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: Some(50),
-            royalty_payment_address: Some("john".to_string()),
-        };
-        instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
-
-        let token_id = "Enterprise";
-        let mint_msg = MintMsg {
-            token_id: token_id.to_string(),
-            owner: "john".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Some(Metadata {
-                description: Some("Spaceship with Warp Drive".into()),
-                name: Some("Starship USS Enterprise".to_string()),
-                ..Metadata::default()
-            }),
-        };
-        let exec_msg = ExecuteMsg::Mint(mint_msg);
-        execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
-
-        let expected = CheckRoyaltiesResponse {
-            royalty_payments: true,
-        };
-        let res = check_royalties(deps.as_ref()).unwrap();
-        assert_eq!(res, expected);
-
-        // also check the longhand way
-        let query_msg = QueryMsg::Extension {
-            msg: Cw2981QueryMsg::CheckRoyalties {},
-        };
-        let query_res: CheckRoyaltiesResponse =
-            from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-        assert_eq!(query_res, expected);
-    }
-
-    #[test]
-    fn check_token_royalties() {
-        let mut deps = mock_dependencies();
-
-        let royalty_payment_address = "jeanluc".to_string();
-
-        let info = mock_info(CREATOR, &[]);
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: Some(10),
-            royalty_payment_address: Some(royalty_payment_address.clone()),
-        };
-        instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
-
-        let token_id = "Enterprise";
-        let mint_msg = MintMsg {
-            token_id: token_id.to_string(),
-            owner: "jeanluc".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Some(Metadata {
-                description: Some("Spaceship with Warp Drive".into()),
-                name: Some("Starship USS Enterprise".to_string()),
-                ..Metadata::default()
-            }),
-        };
-        let exec_msg = ExecuteMsg::Mint(mint_msg);
-        execute(deps.as_mut(), mock_env(), info.clone(), exec_msg).unwrap();
-
-        let expected = RoyaltiesInfoResponse {
-            address: royalty_payment_address.clone(),
-            royalty_amount: Uint128::new(10),
-        };
-        let res =
-            query_royalties_info(deps.as_ref(), token_id.to_string(), Uint128::new(100)).unwrap();
-        assert_eq!(res, expected);
-
-        // also check the longhand way
-        let query_msg = QueryMsg::Extension {
-            msg: Cw2981QueryMsg::RoyaltyInfo {
-                token_id: token_id.to_string(),
-                sale_price: Uint128::new(100),
-            },
-        };
-        let query_res: RoyaltiesInfoResponse =
-            from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-        assert_eq!(query_res, expected);
-
-        // check for rounding down
-        // which is the default behaviour
-        let voyager_token_id = "Voyager";
-        let second_mint_msg = MintMsg {
-            token_id: voyager_token_id.to_string(),
-            owner: "janeway".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Voyager.json".into()),
-            extension: Some(Metadata {
-                description: Some("Spaceship with Warp Drive".into()),
-                name: Some("Starship USS Voyager".to_string()),
-                ..Metadata::default()
-            }),
-        };
-        let voyager_exec_msg = ExecuteMsg::Mint(second_mint_msg);
-        execute(deps.as_mut(), mock_env(), info, voyager_exec_msg).unwrap();
-
-        // 43 x 0.10 (i.e., 10%) should be 4.3
-        // we expect this to be rounded down to 1
-        let voyager_expected = RoyaltiesInfoResponse {
-            address: royalty_payment_address,
-            royalty_amount: Uint128::new(4),
-        };
-
-        let res = query_royalties_info(
-            deps.as_ref(),
-            voyager_token_id.to_string(),
-            Uint128::new(43),
-        )
-        .unwrap();
-        assert_eq!(res, voyager_expected);
-    }
-
-    #[test]
-    fn check_token_without_royalties() {
-        let mut deps = mock_dependencies();
-
-        let info = mock_info(CREATOR, &[]);
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: None,
-            royalty_payment_address: None,
-        };
-        instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
-
-        let token_id = "Enterprise";
-        let mint_msg = MintMsg {
-            token_id: token_id.to_string(),
-            owner: "jeanluc".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Some(Metadata {
-                description: Some("Spaceship with Warp Drive".into()),
-                name: Some("Starship USS Enterprise".to_string()),
-                ..Metadata::default()
-            }),
-        };
-        let exec_msg = ExecuteMsg::Mint(mint_msg);
-        execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
-
-        let expected = RoyaltiesInfoResponse {
-            address: "".to_string(),
-            royalty_amount: Uint128::new(0),
-        };
-        let res =
-            query_royalties_info(deps.as_ref(), token_id.to_string(), Uint128::new(100)).unwrap();
-        assert_eq!(res, expected);
-
-        // also check the longhand way
-        let query_msg = QueryMsg::Extension {
-            msg: Cw2981QueryMsg::RoyaltyInfo {
-                token_id: token_id.to_string(),
-                sale_price: Uint128::new(100),
-            },
-        };
-        let query_res: RoyaltiesInfoResponse =
-            from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-        assert_eq!(query_res, expected);
-    }
-
-    #[test]
-    fn check_token_without_extension() {
-        let mut deps = mock_dependencies();
-
-        let info = mock_info(CREATOR, &[]);
-        let init_msg = InstantiateMsg {
-            name: "SpaceShips".to_string(),
-            symbol: "SPACE".to_string(),
-            minter: CREATOR.to_string(),
-            royalty_percentage: None,
-            royalty_payment_address: None,
-        };
-        instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
-
-        let token_id = "Enterprise";
-        let mint_msg = MintMsg {
-            token_id: token_id.to_string(),
-            owner: "jeanluc".to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: None,
-        };
-        let exec_msg = ExecuteMsg::Mint(mint_msg);
-        execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
-
-        let expected = RoyaltiesInfoResponse {
-            address: "".to_string(),
-            royalty_amount: Uint128::new(0),
-        };
-        let res =
-            query_royalties_info(deps.as_ref(), token_id.to_string(), Uint128::new(100)).unwrap();
-        assert_eq!(res, expected);
-
-        // also check the longhand way
-        let query_msg = QueryMsg::Extension {
-            msg: Cw2981QueryMsg::RoyaltyInfo {
-                token_id: token_id.to_string(),
-                sale_price: Uint128::new(100),
-            },
-        };
-        let query_res: RoyaltiesInfoResponse =
-            from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
-        assert_eq!(query_res, expected);
     }
 }

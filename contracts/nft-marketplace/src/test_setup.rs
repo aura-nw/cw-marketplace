@@ -166,6 +166,7 @@ pub mod env {
             minter: OWNER.to_string(),
             royalty_percentage: Some(20),
             royalty_payment_address: Some(OWNER.to_string()),
+            final_proof: None,
         };
 
         // instantiate contract

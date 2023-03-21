@@ -45,3 +45,24 @@ pub fn check_royalties(_deps: Deps) -> StdResult<CheckRoyaltiesResponse> {
         royalty_payments: true,
     })
 }
+
+// ///
+// fn all_nft_info(
+//     &self,
+//     deps: Deps,
+//     env: Env,
+//     token_id: String,
+//     include_expired: bool,
+// ) -> StdResult<AllNftInfoResponse<T>> {
+//     let info = self.tokens.load(deps.storage, &token_id)?;
+//     Ok(AllNftInfoResponse {
+//         access: OwnerOfResponse {
+//             owner: info.owner.to_string(),
+//             approvals: humanize_approvals(&env.block, &info, include_expired),
+//         },
+//         info: NftInfoResponse {
+//             token_uri: info.token_uri,
+//             extension: info.extension,
+//         },
+//     })
+// }

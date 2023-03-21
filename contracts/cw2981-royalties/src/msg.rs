@@ -14,6 +14,9 @@ pub struct InstantiateMsg {
     pub minter: String,
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
+
+    // provenance proof
+    pub final_proof: Option<String>,
 }
 
 #[cw_serde]
@@ -37,6 +40,13 @@ pub enum Cw2981QueryMsg {
     /// (i.e. always check on sale)
     CheckRoyalties {},
 }
+
+#[cw_serde]
+pub enum Cw2981ExecuteMsg {
+    DistributeNfts { elements_proof: String },
+}
+
+impl CustomMsg for Cw2981ExecuteMsg {}
 
 impl Default for Cw2981QueryMsg {
     fn default() -> Self {
