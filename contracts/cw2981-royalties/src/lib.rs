@@ -7,7 +7,7 @@ pub mod test;
 
 use execute::distribute_nfts;
 use msg::Cw2981ExecuteMsg;
-pub use query::{check_royalties, query_royalties_info};
+pub use query::{all_nft_info, check_royalties, nft_info, query_royalties_info};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Empty, StdError};
@@ -17,7 +17,6 @@ pub use cw721_base::{
     ContractError, InstantiateMsg as Cw721InstantiateMsg, MintMsg, MinterResponse,
 };
 use cw_storage_plus::Item;
-// use sha2::{Digest, Sha256};
 
 use crate::msg::{Cw2981QueryMsg, InstantiateMsg};
 
@@ -190,7 +189,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             } => to_binary(&query_royalties_info(deps, token_id, sale_price)?),
             Cw2981QueryMsg::CheckRoyalties {} => to_binary(&check_royalties(deps)?),
         },
-        // we will override the default
+        // we will override the default query token info to include the token_uri_anchor
+        QueryMsg::NftInfo { token_id } => to_binary(&nft_info(deps, token_id)?),
+        QueryMsg::AllNftInfo {
+            token_id,
+            include_expired,
+        } => to_binary(&all_nft_info(
+            deps,
+            env,
+            token_id,
+            include_expired.unwrap_or(false),
+        )?),
         _ => Cw2981Contract::default().query(deps, env, msg),
     }
 }

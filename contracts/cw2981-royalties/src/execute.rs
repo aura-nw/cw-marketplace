@@ -38,12 +38,12 @@ pub fn distribute_nfts(
 
     // TODO: Maybe we will random following value later
     // OR the below function will activate another random mechanism to get the token_uri_anchor
-    let request_token_uri_anchor = request_token_uri_anchor();
+    let requested_token_uri_anchor = request_token_uri_anchor();
 
     let provenance = ProvenanceInfo {
         final_proof: config.provenance.unwrap().final_proof,
         elements_proof: elements_proof.clone(),
-        token_uri_anchor: request_token_uri_anchor,
+        token_uri_anchor: requested_token_uri_anchor,
     };
     CONFIG.save(
         deps.storage,
