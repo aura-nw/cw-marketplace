@@ -14,6 +14,7 @@ pub struct InstantiateMsg {
     pub minter: String,
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
+    pub creator: Option<String>,
 }
 
 #[cw_serde]

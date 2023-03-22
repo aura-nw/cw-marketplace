@@ -7,8 +7,8 @@ mod tests {
 
     use crate::msg::ColectionInfo;
     use crate::state::LaunchpadInfo;
+    use cw2981_royalties::ContractInfoResponse;
     use cw2981_royalties::QueryMsg as Cw721QueryMsg;
-    use cw721::ContractInfoResponse;
     use cw_multi_test::{App, Executor};
 
     pub const COLLECTION_NAME: &str = "A launchpad collection";
@@ -77,6 +77,7 @@ mod tests {
 
             assert_eq!(res.name, COLLECTION_NAME);
             assert_eq!(res.symbol, COLLECTION_SYMBOL);
+            assert_eq!(res.creator.unwrap(), CREATOR);
         }
 
         #[test]
