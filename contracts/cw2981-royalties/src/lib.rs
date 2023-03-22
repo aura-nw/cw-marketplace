@@ -1,6 +1,7 @@
 pub mod msg;
 pub mod query;
 
+use query::contract_info;
 pub use query::{check_royalties, query_royalties_info};
 
 use cosmwasm_schema::cw_serde;
@@ -57,6 +58,17 @@ pub struct Config {
     pub royalty_payment_address: Option<String>,
 }
 
+// We define a new ContractInfoResponse to add the creator field
+#[cw_serde]
+pub struct ContractInfoResponse {
+    pub name: String,
+    pub symbol: String,
+    pub creator: Option<String>,
+}
+
+// Some collection may want to have the creator different from the minter
+pub const CREATOR: Item<Option<String>> = Item::new("creator");
+
 pub const CONFIG: Item<Config> = Item::new("config");
 
 pub type Extension = Option<Metadata>;
@@ -104,6 +116,9 @@ pub fn instantiate(
             royalty_payment_address: msg.royalty_payment_address,
         },
     )?;
+
+    // set creator
+    CREATOR.save(deps.storage, &msg.creator)?;
 
     Ok(res)
 }
@@ -159,6 +174,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             } => to_binary(&query_royalties_info(deps, token_id, sale_price)?),
             Cw2981QueryMsg::CheckRoyalties {} => to_binary(&check_royalties(deps)?),
         },
+        QueryMsg::ContractInfo {} => to_binary(&contract_info(deps)?),
         _ => Cw2981Contract::default().query(deps, env, msg),
     }
 }
@@ -188,6 +204,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: Some(50),
             royalty_payment_address: Some("john".to_string()),
+            creator: Some("creator".to_string()),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -232,6 +249,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: Some(101),
             royalty_payment_address: Some("john".to_string()),
+            creator: Some("creator".to_string()),
         };
         // instantiate will fail
         let res = instantiate(deps.as_mut(), mock_env(), info, init_msg);
@@ -250,6 +268,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: Some(50),
             royalty_payment_address: Some("john".to_string()),
+            creator: Some("creator".to_string()),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -284,6 +303,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: Some(50),
             royalty_payment_address: Some("john".to_string()),
+            creator: Some("creator".to_string()),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -329,6 +349,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: Some(10),
             royalty_payment_address: Some(royalty_payment_address.clone()),
+            creator: Some("creator".to_string()),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -408,6 +429,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: None,
             royalty_payment_address: None,
+            creator: Some("creator".to_string()),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 
@@ -456,6 +478,7 @@ mod tests {
             minter: CREATOR.to_string(),
             royalty_percentage: None,
             royalty_payment_address: None,
+            creator: Some("creator".to_string()),
         };
         instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
 

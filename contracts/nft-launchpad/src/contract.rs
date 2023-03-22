@@ -99,6 +99,7 @@ pub fn instantiate(
                     minter: env.contract.address.to_string(),
                     royalty_percentage: msg.collection_info.royalty_percentage,
                     royalty_payment_address: msg.collection_info.royalty_payment_address,
+                    creator: Some(msg.collection_info.creator),
                 })?,
             }),
             reply_on: ReplyOn::Success,

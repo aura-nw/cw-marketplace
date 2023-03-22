@@ -1,5 +1,5 @@
 use crate::msg::{CheckRoyaltiesResponse, RoyaltiesInfoResponse};
-use crate::Cw2981Contract;
+use crate::{ContractInfoResponse, Cw2981Contract, CREATOR};
 use cosmwasm_std::{Decimal, Deps, StdResult, Uint128};
 
 /// NOTE: default behaviour here is to round down
@@ -43,5 +43,19 @@ pub fn query_royalties_info(
 pub fn check_royalties(_deps: Deps) -> StdResult<CheckRoyaltiesResponse> {
     Ok(CheckRoyaltiesResponse {
         royalty_payments: true,
+    })
+}
+
+/// Add the creator to the contract info
+pub fn contract_info(deps: Deps) -> StdResult<ContractInfoResponse> {
+    // load default main info
+    let default_info = Cw2981Contract::default().contract_info.load(deps.storage)?;
+    // load creator
+    let creator = CREATOR.load(deps.storage)?;
+
+    Ok(ContractInfoResponse {
+        name: default_info.name,
+        symbol: default_info.symbol,
+        creator,
     })
 }
