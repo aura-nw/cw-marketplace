@@ -8,6 +8,8 @@ pub fn distribute_nfts(
     _env: Env,
     info: MessageInfo,
     elements_proof: String,
+    token_uri_anchor: u32,
+    distinct_elements_number: u32,
 ) -> Result<Response, ContractError> {
     // load minter data from Cw2981Contract::default()
     let minter = Cw2981Contract::default().minter.load(deps.storage)?;
@@ -36,14 +38,11 @@ pub fn distribute_nfts(
         )));
     }
 
-    // TODO: Maybe we will random following value later
-    // OR the below function will activate another random mechanism to get the token_uri_anchor
-    let requested_token_uri_anchor = request_token_uri_anchor();
-
     let provenance = ProvenanceInfo {
-        final_proof: config.provenance.unwrap().final_proof,
+        final_proof: config.clone().provenance.unwrap().final_proof,
         elements_proof: elements_proof.clone(),
-        token_uri_anchor: requested_token_uri_anchor,
+        token_uri_anchor,
+        distinct_elements_number,
     };
     CONFIG.save(
         deps.storage,
@@ -57,9 +56,4 @@ pub fn distribute_nfts(
         ("action", "distribute_nfts"),
         ("elements_proof", &elements_proof),
     ]))
-}
-
-pub fn request_token_uri_anchor() -> u32 {
-    // TODO: implement the random mechanism to get the token_uri_anchor
-    1
 }

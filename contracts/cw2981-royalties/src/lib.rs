@@ -61,6 +61,7 @@ pub struct ProvenanceInfo {
     pub final_proof: String,
     pub elements_proof: String,
     pub token_uri_anchor: u32,
+    pub distinct_elements_number: u32,
 }
 
 #[cw_serde]
@@ -110,15 +111,12 @@ pub fn instantiate(
         }
     }
 
-    let provenance = if msg.final_proof.is_some() {
-        Some(ProvenanceInfo {
-            final_proof: msg.final_proof.unwrap(),
-            elements_proof: "".to_string(), // the proof of all elements will be provided later when distributing the NFTs
-            token_uri_anchor: 0, // the anchor will be provided later when distributing the NFTs
-        })
-    } else {
-        None
-    };
+    let provenance = msg.final_proof.map(|provenance_info| ProvenanceInfo {
+        final_proof: provenance_info,
+        elements_proof: "".to_string(), // the proof of all elements will be provided later when distributing the NFTs
+        token_uri_anchor: 0,
+        distinct_elements_number: 0, // the anchor will be provided later when distributing the NFTs
+    });
 
     // set royalty_percentage and royalty_payment_address
     CONFIG.save(
@@ -171,9 +169,18 @@ pub fn execute(
             )
         }
         ExecuteMsg::Extension { msg } => match msg {
-            Cw2981ExecuteMsg::DistributeNfts { elements_proof } => {
-                distribute_nfts(deps, env, info, elements_proof)
-            }
+            Cw2981ExecuteMsg::DistributeNfts {
+                elements_proof,
+                token_uri_anchor,
+                distinct_elements_number,
+            } => distribute_nfts(
+                deps,
+                env,
+                info,
+                elements_proof,
+                token_uri_anchor,
+                distinct_elements_number,
+            ),
         },
         _ => Cw2981Contract::default().execute(deps, env, info, msg),
     }

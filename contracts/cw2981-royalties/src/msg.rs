@@ -43,7 +43,11 @@ pub enum Cw2981QueryMsg {
 
 #[cw_serde]
 pub enum Cw2981ExecuteMsg {
-    DistributeNfts { elements_proof: String },
+    DistributeNfts {
+        elements_proof: String,
+        token_uri_anchor: u32,
+        distinct_elements_number: u32,
+    },
 }
 
 impl CustomMsg for Cw2981ExecuteMsg {}

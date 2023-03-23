@@ -374,6 +374,8 @@ fn check_token_with_provenance_distribution() {
     // distribute the nfts
     let distribute_msg = Cw2981ExecuteMsg::DistributeNfts {
         elements_proof: "elements_proof".to_string(),
+        token_uri_anchor: 2,
+        distinct_elements_number: 3,
     };
 
     let exec_msg = ExecuteMsg::Extension {
@@ -389,6 +391,6 @@ fn check_token_with_provenance_distribution() {
         from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
     assert_eq!(
         query_res.token_uri.unwrap(),
-        "https://starships.example.com/Starship/2.json".to_string()
+        "https://starships.example.com/Starship/3.json".to_string()
     );
 }

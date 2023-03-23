@@ -1,6 +1,5 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
-
 use crate::state::{LaunchpadInfo, PhaseConfigResponse, PhaseData};
+use cosmwasm_schema::{cw_serde, QueryResponses};
 
 /// Message type for `instantiate` entry_point
 #[cw_serde]
