@@ -1,4 +1,6 @@
-use crate::msg::{CheckRoyaltiesResponse, Cw2981QueryMsg, InstantiateMsg, RoyaltiesInfoResponse};
+use crate::msg::{
+    CheckRoyaltiesResponse, Cw2981ExecuteMsg, Cw2981QueryMsg, InstantiateMsg, RoyaltiesInfoResponse,
+};
 use crate::{
     check_royalties, execute, instantiate, query, query_royalties_info, Cw2981Contract, ExecuteMsg,
     Metadata, QueryMsg,
@@ -7,7 +9,7 @@ use crate::{
 use cosmwasm_std::{from_binary, Uint128};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cw721::Cw721Query;
+use cw721::{Cw721Query, NftInfoResponse};
 use cw721_base::MintMsg;
 
 const CREATOR: &str = "creator";
@@ -328,4 +330,65 @@ fn check_token_without_extension() {
     let query_res: RoyaltiesInfoResponse =
         from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
     assert_eq!(query_res, expected);
+}
+
+#[test]
+fn check_token_with_provenance_distribution() {
+    let mut deps = mock_dependencies();
+
+    let info = mock_info(CREATOR, &[]);
+    let init_msg = InstantiateMsg {
+        name: "SpaceShips".to_string(),
+        symbol: "SPACE".to_string(),
+        minter: CREATOR.to_string(),
+        royalty_percentage: None,
+        royalty_payment_address: None,
+        final_proof: Some("final_proof".to_string()),
+    };
+    instantiate(deps.as_mut(), mock_env(), info.clone(), init_msg).unwrap();
+
+    let token_id = "1";
+
+    // mint the token
+    let mint_msg = MintMsg {
+        token_id: token_id.to_string(),
+        owner: "creator".to_string(),
+        token_uri: Some("https://starships.example.com/Starship/{token_id}.json".into()),
+        extension: None,
+    };
+
+    let exec_msg = ExecuteMsg::Mint(mint_msg);
+    execute(deps.as_mut(), mock_env(), info.clone(), exec_msg).unwrap();
+
+    // query nft info
+    let query_msg = QueryMsg::NftInfo {
+        token_id: token_id.to_string(),
+    };
+    let query_res: NftInfoResponse<Metadata> =
+        from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+    assert_eq!(
+        query_res.token_uri.unwrap(),
+        "https://starships.example.com/Starship/{token_id}.json".to_string()
+    );
+
+    // distribute the nfts
+    let distribute_msg = Cw2981ExecuteMsg::DistributeNfts {
+        elements_proof: "elements_proof".to_string(),
+    };
+
+    let exec_msg = ExecuteMsg::Extension {
+        msg: distribute_msg,
+    };
+    execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
+
+    // query nft info
+    let query_msg = QueryMsg::NftInfo {
+        token_id: token_id.to_string(),
+    };
+    let query_res: NftInfoResponse<Metadata> =
+        from_binary(&query(deps.as_ref(), mock_env(), query_msg).unwrap()).unwrap();
+    assert_eq!(
+        query_res.token_uri.unwrap(),
+        "https://starships.example.com/Starship/2.json".to_string()
+    );
 }

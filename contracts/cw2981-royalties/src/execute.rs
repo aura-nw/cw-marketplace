@@ -61,5 +61,5 @@ pub fn distribute_nfts(
 
 pub fn request_token_uri_anchor() -> u32 {
     // TODO: implement the random mechanism to get the token_uri_anchor
-    0
+    1
 }
