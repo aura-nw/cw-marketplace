@@ -375,7 +375,7 @@ fn check_token_with_provenance_distribution() {
     let distribute_msg = Cw2981ExecuteMsg::DistributeNfts {
         elements_proof: "elements_proof".to_string(),
         token_uri_anchor: 2,
-        distinct_elements_number: 3,
+        distinct_elements_number: 4,
     };
 
     let exec_msg = ExecuteMsg::Extension {

@@ -1,5 +1,6 @@
 use crate::state::{LaunchpadInfo, PhaseConfigResponse, PhaseData};
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use nois::NoisCallback;
 
 /// Message type for `instantiate` entry_point
 #[cw_serde]
@@ -42,6 +43,14 @@ pub enum ExecuteMsg {
     },
     Withdraw {
         denom: String,
+    },
+    ActivateDistribution {
+        random_proxy: String,
+        elements_proof: String,
+        distinct_elements_number: u32,
+    },
+    NoisReceive {
+        callback: NoisCallback,
     },
 }
 

@@ -1,5 +1,12 @@
 use std::vec;
 
+use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
+use crate::state::{
+    Config, LaunchpadInfo, PhaseConfig, PhaseConfigResponse, PhaseData, CONFIG,
+    DISTINCT_ELEMENTS_NUMBER, ELEMENTS_PROOF, LAUNCHPAD_INFO, PHASE_CONFIGS, RANDOM_PROXY,
+    RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -8,19 +15,17 @@ use cosmwasm_std::{
     SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw2981_royalties::msg::Cw2981ExecuteMsg;
 use cw2981_royalties::MintMsg;
 use cw2981_royalties::{
-    msg::InstantiateMsg as Cw2981InstantiateMsg, ExecuteMsg as Cw2981ExecuteMsg,
+    msg::InstantiateMsg as Cw2981InstantiateMsg, ExecuteMsg as Cw721ExecuteMsg,
 };
 use cw_utils::parse_reply_instantiate_data;
-use nois::{int_in_range, randomness_from_str, sub_randomness_with_key};
-
-use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
-use crate::state::{
-    Config, LaunchpadInfo, PhaseConfig, PhaseConfigResponse, PhaseData, CONFIG, LAUNCHPAD_INFO,
-    PHASE_CONFIGS, RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
+use nois::{
+    int_in_range, randomness_from_str, sub_randomness_with_key, NoisCallback, ProxyExecuteMsg,
 };
+
+use std::u64;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:nft-launchpad";
@@ -185,6 +190,19 @@ pub fn execute(
         ExecuteMsg::ActivateLaunchpad {} => active_launchpad(deps, info),
         ExecuteMsg::DeactivateLaunchpad {} => deactive_launchpad(deps, info),
         ExecuteMsg::Withdraw { denom } => withdraw(deps, env, info, denom),
+        ExecuteMsg::ActivateDistribution {
+            random_proxy,
+            elements_proof,
+            distinct_elements_number,
+        } => activate_distribution(
+            deps,
+            env,
+            info,
+            random_proxy,
+            elements_proof,
+            distinct_elements_number,
+        ),
+        ExecuteMsg::NoisReceive { callback } => execute_nois_receive(deps, env, info, callback),
     }
 }
 
@@ -661,7 +679,7 @@ pub fn mint(
         // create mint message NFT for the sender
         let mint_msg = WasmMsg::Execute {
             contract_addr: launchpad_info.collection_address.to_string(),
-            msg: to_binary(&Cw2981ExecuteMsg::Mint(MintMsg {
+            msg: to_binary(&Cw721ExecuteMsg::Mint(MintMsg {
                 token_id,
                 owner: info.sender.to_string(),
                 token_uri: Some(token_uri),
@@ -932,6 +950,93 @@ pub fn withdraw(
     }
 
     Ok(res.add_attribute("withdraw_time", env.block.time.to_string()))
+}
+
+fn activate_distribution(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    random_proxy: String,
+    elements_proof: String,
+    distinct_elements_number: u32,
+) -> Result<Response, ContractError> {
+    // Save random_proxy, elements proof and distinct elements number to storage
+    RANDOM_PROXY.save(deps.storage, &deps.api.addr_validate(&random_proxy)?)?;
+    ELEMENTS_PROOF.save(deps.storage, &elements_proof)?;
+    DISTINCT_ELEMENTS_NUMBER.save(deps.storage, &distinct_elements_number)?;
+
+    // send a request to random_proxy to get the random number
+    let mut res = Response::new();
+    res = res.add_message(WasmMsg::Execute {
+        contract_addr: random_proxy.to_string(),
+        msg: to_binary(&ProxyExecuteMsg::GetNextRandomness {
+            job_id: "1".to_string(),
+        })?,
+        funds: info.funds,
+    });
+
+    Ok(res.add_attributes([
+        ("action", "activate_distribution"),
+        ("random_proxy", &random_proxy),
+        ("elements_proof", &elements_proof),
+        (
+            "distinct_elements_number",
+            &distinct_elements_number.to_string(),
+        ),
+    ]))
+}
+
+fn execute_nois_receive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    callback: NoisCallback,
+) -> Result<Response, ContractError> {
+    // if the callback is not from random_proxy, then return error
+    let proxy = RANDOM_PROXY.load(deps.storage)?;
+    if info.sender != proxy {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Extract randomness from callback
+    let NoisCallback { randomness, .. } = callback;
+    let randomness: [u8; 32] = randomness
+        .to_array()
+        .map_err(|_| ContractError::CustomError {
+            val: "Invalid randomness".to_string(),
+        })?;
+    let randomness_u32 = std::str::from_utf8(&randomness)
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
+    // get the distinct elements number
+    let distinct_elements_number = DISTINCT_ELEMENTS_NUMBER.load(deps.storage)?;
+
+    // the token_uri_anchor should be less than distinct_elements_number
+    let token_uri_anchor = randomness_u32 % distinct_elements_number;
+
+    // distribute nfts in the collection contract
+    // load the collection address from LAUNCHPAD_INFO
+    let collection_contract = LAUNCHPAD_INFO.load(deps.storage)?.collection_address;
+
+    let mut res = Response::new();
+    res = res.add_message(WasmMsg::Execute {
+        contract_addr: collection_contract.to_string(),
+        msg: to_binary(&Cw2981ExecuteMsg::DistributeNfts {
+            token_uri_anchor,
+            elements_proof: ELEMENTS_PROOF.load(deps.storage)?,
+            distinct_elements_number,
+        })?,
+        funds: info.funds,
+    });
+
+    Ok(res.add_attributes([
+        ("action", "execute_nois_receive"),
+        ("random_proxy", proxy.as_ref()),
+        ("randomness", std::str::from_utf8(&randomness).unwrap()),
+        ("token_uri_anchor", &token_uri_anchor.to_string()),
+    ]))
 }
 
 // we need a function to check when the launchpad started

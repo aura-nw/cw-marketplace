@@ -127,10 +127,14 @@ fn generate_token_uri(
                 // TODO: we need implement the anchor logic here.
                 // It should be a rotating array with the size of max_supply
 
-                Some(uri.replace(
-                    "{token_id}",
-                    &(token_id_u32 + provenance.token_uri_anchor).to_string(),
-                ))
+                Some(
+                    uri.replace(
+                        "{token_id}",
+                        &((token_id_u32 + provenance.token_uri_anchor)
+                            % provenance.distinct_elements_number)
+                            .to_string(),
+                    ),
+                )
             } else {
                 info.token_uri.clone()
             }
