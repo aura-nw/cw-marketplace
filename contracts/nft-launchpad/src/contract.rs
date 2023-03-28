@@ -594,17 +594,21 @@ pub fn mint(
     WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
 
     // check if the funds is not enough, then return error
-    if !has_coins(
-        &info.funds,
-        &Coin {
-            denom: phase_config.price.denom,
-            amount: phase_config
-                .price
-                .amount
-                .checked_mul(Uint128::from(amount_nfts))
-                .unwrap(),
-        },
-    ) {
+    // if the price is greater than 0, then check if the funds is not enough
+    // else this is a free mint, so we don't need to check the funds
+    if phase_config.price.amount > Uint128::from(0u128)
+        && !has_coins(
+            &info.funds,
+            &Coin {
+                denom: phase_config.price.denom,
+                amount: phase_config
+                    .price
+                    .amount
+                    .checked_mul(Uint128::from(amount_nfts))
+                    .unwrap(),
+            },
+        )
+    {
         return Err(ContractError::NotEnoughFunds {});
     }
 
