@@ -1,6 +1,6 @@
 use crate::msg::{CheckRoyaltiesResponse, RoyaltiesInfoResponse};
 use crate::{Cw2981Contract, Metadata, CONFIG};
-use cosmwasm_std::{BlockInfo, Decimal, Deps, Env, StdResult, Uint128};
+use cosmwasm_std::{BlockInfo, Decimal, Deps, Env, StdResult, Uint128, Uint256};
 use cw721::{AllNftInfoResponse, NftInfoResponse, OwnerOfResponse};
 use cw721_base::state::{Approval, TokenInfo};
 
@@ -118,7 +118,7 @@ fn generate_token_uri(
     if let Some(provenance) = provenance_info {
         // if provenance is set,
         // check the distributing NFTs is executed
-        if provenance.token_uri_anchor != 0 {
+        if provenance.token_uri_anchor != Uint256::zero() {
             let token_id_u32: u32 = match token_id.trim().parse() {
                 Ok(id) => id,
                 Err(_) => return info.token_uri.clone(),
@@ -130,9 +130,11 @@ fn generate_token_uri(
                 Some(
                     uri.replace(
                         "{token_id}",
-                        &((token_id_u32 + provenance.token_uri_anchor)
-                            % provenance.distinct_elements_number)
-                            .to_string(),
+                        &((Uint256::from(token_id_u32)
+                            .checked_add(provenance.token_uri_anchor)
+                            .unwrap())
+                            % Uint256::from(provenance.distinct_elements_number))
+                        .to_string(),
                     ),
                 )
             } else {

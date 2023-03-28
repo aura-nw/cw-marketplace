@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{CustomMsg, Uint128};
+use cosmwasm_std::{CustomMsg, Uint128, Uint256};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -45,7 +45,7 @@ pub enum Cw2981QueryMsg {
 pub enum Cw2981ExecuteMsg {
     DistributeNfts {
         elements_proof: String,
-        token_uri_anchor: u32,
+        token_uri_anchor: Uint256,
         distinct_elements_number: u32,
     },
 }

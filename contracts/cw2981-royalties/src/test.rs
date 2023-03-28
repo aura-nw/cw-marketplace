@@ -6,7 +6,7 @@ use crate::{
     Metadata, QueryMsg,
 };
 
-use cosmwasm_std::{from_binary, Uint128};
+use cosmwasm_std::{from_binary, Uint128, Uint256};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cw721::{Cw721Query, NftInfoResponse};
@@ -374,7 +374,7 @@ fn check_token_with_provenance_distribution() {
     // distribute the nfts
     let distribute_msg = Cw2981ExecuteMsg::DistributeNfts {
         elements_proof: "elements_proof".to_string(),
-        token_uri_anchor: 2,
+        token_uri_anchor: Uint256::from(2u32),
         distinct_elements_number: 4,
     };
 

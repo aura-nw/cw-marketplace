@@ -10,7 +10,7 @@ use msg::Cw2981ExecuteMsg;
 pub use query::{all_nft_info, check_royalties, nft_info, query_royalties_info};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Empty, StdError};
+use cosmwasm_std::{to_binary, Empty, StdError, Uint256};
 use cw2::set_contract_version;
 use cw721_base::Cw721Contract;
 pub use cw721_base::{
@@ -60,7 +60,7 @@ pub struct Metadata {
 pub struct ProvenanceInfo {
     pub final_proof: String,
     pub elements_proof: String,
-    pub token_uri_anchor: u32,
+    pub token_uri_anchor: Uint256,
     pub distinct_elements_number: u32,
 }
 
@@ -114,7 +114,7 @@ pub fn instantiate(
     let provenance = msg.final_proof.map(|provenance_info| ProvenanceInfo {
         final_proof: provenance_info,
         elements_proof: "".to_string(), // the proof of all elements will be provided later when distributing the NFTs
-        token_uri_anchor: 0,
+        token_uri_anchor: Uint256::zero(),
         distinct_elements_number: 0, // the anchor will be provided later when distributing the NFTs
     });
 

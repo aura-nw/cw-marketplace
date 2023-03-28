@@ -1,4 +1,4 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdError, Uint256};
 use cw721_base::ContractError;
 
 use crate::{Config, Cw2981Contract, ProvenanceInfo, CONFIG};
@@ -8,7 +8,7 @@ pub fn distribute_nfts(
     _env: Env,
     info: MessageInfo,
     elements_proof: String,
-    token_uri_anchor: u32,
+    token_uri_anchor: Uint256,
     distinct_elements_number: u32,
 ) -> Result<Response, ContractError> {
     // load minter data from Cw2981Contract::default()

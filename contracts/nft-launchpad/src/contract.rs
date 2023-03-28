@@ -12,7 +12,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, has_coins, to_binary, Addr, BalanceResponse, BankMsg, BankQuery, Binary, Coin, CosmosMsg,
     Deps, DepsMut, Env, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdResult, Storage,
-    SubMsg, Timestamp, Uint128, WasmMsg,
+    SubMsg, Timestamp, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw2981_royalties::msg::Cw2981ExecuteMsg;
@@ -24,8 +24,6 @@ use cw_utils::parse_reply_instantiate_data;
 use nois::{
     int_in_range, randomness_from_str, sub_randomness_with_key, NoisCallback, ProxyExecuteMsg,
 };
-
-use std::u64;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:nft-launchpad";
@@ -1005,16 +1003,15 @@ fn execute_nois_receive(
         .map_err(|_| ContractError::CustomError {
             val: "Invalid randomness".to_string(),
         })?;
-    let randomness_u32 = std::str::from_utf8(&randomness)
-        .unwrap()
-        .parse::<u32>()
-        .unwrap();
+
+    // convert randomness to u256 integer
+    let randomness_u256 = Uint256::new(randomness);
 
     // get the distinct elements number
     let distinct_elements_number = DISTINCT_ELEMENTS_NUMBER.load(deps.storage)?;
 
     // the token_uri_anchor should be less than distinct_elements_number
-    let token_uri_anchor = randomness_u32 % distinct_elements_number;
+    let token_uri_anchor = randomness_u256 % Uint256::from(distinct_elements_number);
 
     // distribute nfts in the collection contract
     // load the collection address from LAUNCHPAD_INFO
