@@ -73,3 +73,7 @@ pub const WHITELIST: Map<(u64, Addr), u64> = Map::new("whitelist");
 pub const REMAINING_TOKEN_IDS: Map<u64, u64> = Map::new("remaining_token_ids");
 
 pub const RANDOM_SEED: Item<[u8; 32]> = Item::new("random_seed");
+
+// the offset of the token_id in the token_ids
+// We need this offset because some collection has nfts with token_id not starting from 1
+pub const TOKEN_ID_OFFSET: Item<u64> = Item::new("token_id_offset");

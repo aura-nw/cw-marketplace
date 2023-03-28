@@ -44,6 +44,9 @@ pub enum ExecuteMsg {
     Withdraw {
         denom: String,
     },
+    UpdateTokenIdOffset {
+        offset: u64,
+    },
 }
 
 /// Message type for `migrate` entry_point

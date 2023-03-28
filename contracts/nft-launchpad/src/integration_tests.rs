@@ -2450,6 +2450,171 @@ mod tests {
         }
 
         #[test]
+        fn the_token_id_of_nfts_is_unique_with_offset() {
+            // get integration test app and launchpad address
+            let (mut app, launchpad_address) = create_launchpad_with_number_supply(20);
+
+            // ADD FIRST PHASE to the first position
+            // prepare execute msg for adding new phase to launchpad
+            let add_first_phase_msg = ExecuteMsg::AddMintPhase {
+                after_phase_id: None,
+                phase_data: PhaseData {
+                    start_time: app.block_info().time.plus_seconds(200),
+                    end_time: app.block_info().time.plus_seconds(610),
+                    max_supply: Some(20),
+                    max_nfts_per_address: 10,
+                    price: coin(500, NATIVE_DENOM),
+                    is_public: false,
+                },
+            };
+
+            // execute add new phase msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_first_phase_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // prepare execute msg for adding new whitelist to launchpad
+            let add_whitelist_msg = ExecuteMsg::AddWhitelist {
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                phase_id: 1,
+            };
+
+            // execute add new whitelist msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_whitelist_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // set offset to 10
+            let set_offset_msg = ExecuteMsg::UpdateTokenIdOffset { offset: 10 };
+
+            // execute set offset msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &set_offset_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // admin activate the launchpad
+            let activate_msg = ExecuteMsg::ActivateLaunchpad {};
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &activate_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // change block time increase 400 seconds to make phase active
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(400),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // get the price of phase 1
+            let phase_config_info: Vec<PhaseConfigResponse> = app
+                .wrap()
+                .query_wasm_smart(
+                    Addr::unchecked(launchpad_address.clone()),
+                    &QueryMsg::GetAllPhaseConfigs {},
+                )
+                .unwrap();
+
+            // Mint 1000000000 native token to USER_1
+            app.sudo(cw_multi_test::SudoMsg::Bank(
+                cw_multi_test::BankSudo::Mint {
+                    to_address: USER_1.to_string(),
+                    amount: vec![Coin {
+                        amount: 1000000000u128.into(),
+                        denom: NATIVE_DENOM.to_string(),
+                    }],
+                },
+            ))
+            .unwrap();
+
+            // we need an array to store the minted token ids of nfts
+            let mut token_ids: Vec<String> = Vec::new();
+
+            // let's USER1 mint 10 nfts
+            for _ in 0..10 {
+                // prepare execute msg for minting nft
+                let mint_msg = ExecuteMsg::Mint {
+                    phase_id: 1,
+                    amount: Option::from(1),
+                };
+
+                // execute mint msg
+                let res = app.execute_contract(
+                    Addr::unchecked(USER_1),
+                    Addr::unchecked(launchpad_address.clone()),
+                    &mint_msg,
+                    &[Coin {
+                        denom: NATIVE_DENOM.to_string(),
+                        amount: phase_config_info[0].price.amount,
+                    }],
+                );
+                assert!(res.is_ok());
+
+                // get the token id of the minted nft
+                let token_id = &res.unwrap().events[3].attributes[4].value;
+
+                // check if the token id is unique
+                assert!(!token_ids.contains(token_id));
+
+                // push the token id to the array
+                token_ids.push(token_id.to_string());
+            }
+
+            // let's ADMIN mint 10 nfts again
+            for _ in 0..10 {
+                // prepare execute msg for minting nft
+                let mint_msg = ExecuteMsg::Mint {
+                    phase_id: 1,
+                    amount: Option::from(1),
+                };
+
+                // execute mint msg
+                let res = app.execute_contract(
+                    Addr::unchecked(ADMIN),
+                    Addr::unchecked(launchpad_address.clone()),
+                    &mint_msg,
+                    &[Coin {
+                        denom: NATIVE_DENOM.to_string(),
+                        amount: phase_config_info[0].price.amount,
+                    }],
+                );
+                assert!(res.is_ok());
+
+                // get the token id of the minted nft
+                let token_id = &res.unwrap().events[3].attributes[4].value;
+
+                // check if the token id is unique
+                assert!(!token_ids.contains(token_id));
+
+                // push the token id to the array
+                token_ids.push(token_id.to_string());
+            }
+
+            // assert tpken_ids array correct
+            let expected_ids = [
+                "25", "26", "22", "15", "18", "11", "17", "16", "19", "28", "14", "29", "30", "20",
+                "12", "24", "23", "27", "21", "13",
+            ]
+            .to_vec();
+            assert_eq!(token_ids, expected_ids);
+        }
+
+        #[test]
         fn mint_100_tokens() {
             // get integration test app and launchpad address
             let (mut app, launchpad_address) = create_launchpad_with_number_supply(199);

@@ -19,7 +19,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
 use crate::state::{
     Config, LaunchpadInfo, PhaseConfig, PhaseConfigResponse, PhaseData, CONFIG, LAUNCHPAD_INFO,
-    PHASE_CONFIGS, RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
+    PHASE_CONFIGS, RANDOM_SEED, REMAINING_TOKEN_IDS, TOKEN_ID_OFFSET, WHITELIST,
 };
 
 // version info for migration info
@@ -48,6 +48,9 @@ pub fn instantiate(
             .unwrap(),
     };
     CONFIG.save(deps.storage, &config)?;
+
+    // init TOKEN_ID_OFFSET to 0
+    TOKEN_ID_OFFSET.save(deps.storage, &0)?;
 
     // store the address of the cw2981 collection contract
     LAUNCHPAD_INFO.save(
@@ -179,6 +182,9 @@ pub fn execute(
         ExecuteMsg::ActivateLaunchpad {} => active_launchpad(deps, info),
         ExecuteMsg::DeactivateLaunchpad {} => deactive_launchpad(deps, info),
         ExecuteMsg::Withdraw { denom } => withdraw(deps, env, info, denom),
+        ExecuteMsg::UpdateTokenIdOffset { offset } => {
+            update_token_id_offset(deps, env, info, offset)
+        }
     }
 }
 
@@ -770,6 +776,12 @@ fn get_token_id_from_position(
     // remove the last item of the remaining_token_ids
     REMAINING_TOKEN_IDS.remove(storage, number_remaining_nfts - 1);
 
+    // load TOKEN_ID_OFFSET from the storage
+    let token_id_offset = TOKEN_ID_OFFSET.load(storage).unwrap();
+
+    // add offset to the token_id
+    let token_id = token_id + token_id_offset;
+
     // return the token_id
     Ok(token_id.to_string())
 }
@@ -915,6 +927,31 @@ pub fn withdraw(
     }
 
     Ok(res.add_attribute("withdraw_time", env.block.time.to_string()))
+}
+
+fn update_token_id_offset(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    offset: u64,
+) -> Result<Response, ContractError> {
+    // check if the launchpad started, then return error
+    if is_launchpad_started(deps.storage, &env) {
+        return Err(ContractError::LaunchpadStarted {});
+    }
+
+    // check if the sender is not the owner, then return error
+    let config: Config = CONFIG.load(deps.storage)?;
+    if config.admin != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // update the token id offset
+    TOKEN_ID_OFFSET.save(deps.storage, &offset)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_token_id_offset")
+        .add_attribute("offset", offset.to_string()))
 }
 
 // we need a function to check when the launchpad started
