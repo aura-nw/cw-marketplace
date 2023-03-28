@@ -1031,7 +1031,7 @@ fn execute_nois_receive(
     Ok(res.add_attributes([
         ("action", "execute_nois_receive"),
         ("random_proxy", proxy.as_ref()),
-        ("randomness", std::str::from_utf8(&randomness).unwrap()),
+        ("randomness", &randomness_u256.to_string()),
         ("token_uri_anchor", &token_uri_anchor.to_string()),
     ]))
 }
