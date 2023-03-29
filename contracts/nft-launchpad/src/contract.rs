@@ -82,6 +82,22 @@ pub fn instantiate(
     let randomness = randomness_from_str(msg.random_seed).unwrap();
     RANDOM_SEED.save(deps.storage, &randomness)?;
 
+    // we will pick the reserved token ids from the list
+    if let Some(reseved_tokens) = msg.collection_info.reserved_tokens {
+        // remaining token ids will be equal to the max supply + len of reserved token ids
+        let mut remaining_token_ids = msg.collection_info.max_supply + reseved_tokens.len() as u64;
+        // we will sort the reserved token ids
+        let mut reseved_tokens = reseved_tokens;
+        reseved_tokens.sort();
+        // reverse the reserved token ids to get descending order
+        reseved_tokens.reverse();
+        // for each reserved token id
+        for token_id in reseved_tokens {
+            get_token_id_from_position(deps.storage, token_id - 1, remaining_token_ids)?;
+            remaining_token_ids -= 1;
+        }
+    }
+
     // add an instantiate message for new cw2981 collection contract
     Ok(Response::new()
         .add_attributes(vec![

@@ -81,4 +81,5 @@ pub struct ColectionInfo {
     pub uri_suffix: String,
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
+    pub reserved_tokens: Option<Vec<u64>>,
 }
