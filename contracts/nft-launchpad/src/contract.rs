@@ -19,7 +19,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, MintableResponse, QueryMsg};
 use crate::state::{
     Config, LaunchpadInfo, PhaseConfig, PhaseConfigResponse, PhaseData, CONFIG, LAUNCHPAD_INFO,
-    PHASE_CONFIGS, RANDOM_SEED, REMAINING_TOKEN_IDS, WHITELIST,
+    PHASE_CONFIGS, RANDOM_SEED, REMAINING_TOKEN_IDS, TOKEN_ID_OFFSET, WHITELIST,
 };
 
 // version info for migration info
@@ -48,6 +48,9 @@ pub fn instantiate(
             .unwrap(),
     };
     CONFIG.save(deps.storage, &config)?;
+
+    // init TOKEN_ID_OFFSET to 0
+    TOKEN_ID_OFFSET.save(deps.storage, &0)?;
 
     // store the address of the cw2981 collection contract
     LAUNCHPAD_INFO.save(
@@ -78,6 +81,30 @@ pub fn instantiate(
     // save the init RANDOM_SEED to the storage
     let randomness = randomness_from_str(msg.random_seed).unwrap();
     RANDOM_SEED.save(deps.storage, &randomness)?;
+
+    let mut token_id_offset = 0u64;
+    // update the token id offset
+    if let Some(offset) = msg.collection_info.token_id_offset {
+        token_id_offset = offset;
+    }
+
+    TOKEN_ID_OFFSET.save(deps.storage, &token_id_offset)?;
+
+    // we will pick the reserved token ids from the list
+    if let Some(mut reserved_tokens) = msg.collection_info.reserved_tokens {
+        // remaining token ids will be equal to the max supply + len of reserved token ids
+        let mut remaining_token_ids = msg.collection_info.max_supply + reserved_tokens.len() as u64;
+        // we will sort the reserved token ids
+        reserved_tokens.sort();
+        // reverse the reserved token ids to get descending order
+        reserved_tokens.reverse();
+        // for each reserved token id
+        for mut token_id in reserved_tokens {
+            token_id -= token_id_offset;
+            get_token_id_from_position(deps.storage, token_id - 1, remaining_token_ids)?;
+            remaining_token_ids -= 1;
+        }
+    }
 
     // add an instantiate message for new cw2981 collection contract
     Ok(Response::new()
@@ -594,17 +621,21 @@ pub fn mint(
     WHITELIST.save(deps.storage, (phase_id, info.sender.clone()), &minted_nfts)?;
 
     // check if the funds is not enough, then return error
-    if !has_coins(
-        &info.funds,
-        &Coin {
-            denom: phase_config.price.denom,
-            amount: phase_config
-                .price
-                .amount
-                .checked_mul(Uint128::from(amount_nfts))
-                .unwrap(),
-        },
-    ) {
+    // if the price is greater than 0, then check if the funds is not enough
+    // else this is a free mint, so we don't need to check the funds
+    if phase_config.price.amount > Uint128::from(0u128)
+        && !has_coins(
+            &info.funds,
+            &Coin {
+                denom: phase_config.price.denom,
+                amount: phase_config
+                    .price
+                    .amount
+                    .checked_mul(Uint128::from(amount_nfts))
+                    .unwrap(),
+            },
+        )
+    {
         return Err(ContractError::NotEnoughFunds {});
     }
 
@@ -765,6 +796,12 @@ fn get_token_id_from_position(
 
     // remove the last item of the remaining_token_ids
     REMAINING_TOKEN_IDS.remove(storage, number_remaining_nfts - 1);
+
+    // load TOKEN_ID_OFFSET from the storage
+    let token_id_offset = TOKEN_ID_OFFSET.load(storage).unwrap();
+
+    // add offset to the token_id
+    let token_id = token_id + token_id_offset;
 
     // return the token_id
     Ok(token_id.to_string())
