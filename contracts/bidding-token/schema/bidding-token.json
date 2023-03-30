@@ -342,7 +342,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Only with the \"mintable\" extension. If authorized, creates amount new tokens and adds to the recipient nalance.",
+        "description": "Only with the \"mintable\" extension. If authorized, creates amount new tokens and adds to the recipient balance.",
         "type": "object",
         "required": [
           "mint"
