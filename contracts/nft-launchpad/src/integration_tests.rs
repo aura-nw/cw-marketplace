@@ -39,6 +39,7 @@ mod tests {
                     uri_suffix: ".json".to_string(),
                     creator: CREATOR.to_string(),
                     reserved_tokens: None,
+                    token_id_offset: None,
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
                     .to_string(),
@@ -103,6 +104,7 @@ mod tests {
                     uri_suffix: ".json".to_string(),
                     creator: CREATOR.to_string(),
                     reserved_tokens: None,
+                    token_id_offset: None,
                 },
                 random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d1237fa51ebeb1d8fe62"
                     .to_string(),
@@ -147,6 +149,7 @@ mod tests {
                 uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
                 reserved_tokens: None,
+                token_id_offset: None,
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
@@ -169,7 +172,7 @@ mod tests {
         (app, launchpad_addr)
     }
 
-    pub fn create_launchpad_with_number_supply(max_cap: u64) -> (App, Addr) {
+    pub fn create_launchpad_with_number_supply(max_cap: u64, offset: Option<u64>) -> (App, Addr) {
         // get integration test app and contracts
         let (mut app, contracts) = instantiate_contracts();
         let cw2981_code_id = contracts[0].contract_code_id;
@@ -190,6 +193,7 @@ mod tests {
                 uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
                 reserved_tokens: None,
+                token_id_offset: offset,
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
@@ -233,7 +237,8 @@ mod tests {
                         .to_string(),
                 uri_suffix: ".json".to_string(),
                 creator: CREATOR.to_string(),
-                reserved_tokens: Some([2, 6, 3, 5, 20].into()),
+                reserved_tokens: Some([13, 11, 28, 29, 30].into()),
+                token_id_offset: Some(10),
             },
             random_seed: "9e8e26615f51552aa3b18b6f0bcf0dae5afbe30321e8d7ea7fa51ebeb1d8fe62"
                 .to_string(),
@@ -2115,7 +2120,7 @@ mod tests {
         #[test]
         fn cannot_mint_because_max_supply_of_launchpad_reached() {
             // get integration test app and launchpad address
-            let (mut app, launchpad_address) = create_launchpad_with_number_supply(1);
+            let (mut app, launchpad_address) = create_launchpad_with_number_supply(1, None);
 
             // ADD FIRST PHASE to the first position
             // prepare execute msg for adding new phase to launchpad
@@ -2347,7 +2352,7 @@ mod tests {
         #[test]
         fn the_token_id_of_nfts_is_unique() {
             // get integration test app and launchpad address
-            let (mut app, launchpad_address) = create_launchpad_with_number_supply(20);
+            let (mut app, launchpad_address) = create_launchpad_with_number_supply(20, None);
 
             // ADD FIRST PHASE to the first position
             // prepare execute msg for adding new phase to launchpad
@@ -2643,16 +2648,18 @@ mod tests {
 
             // assert tpken_ids array correct
             let expected_ids = [
-                "13", "14", "9", "4", "17", "1", "18", "15", "19", "8", "16", "12", "10", "7", "11",
+                "23", "24", "19", "14", "27", "26", "15", "25", "16", "18", "12", "22", "20", "17",
+                "21",
             ]
             .to_vec();
+            //reserved_tokens: Some([13, 11, 28, 29, 30].into()),
             assert_eq!(token_ids, expected_ids);
         }
 
         #[test]
         fn the_token_id_of_nfts_is_unique_with_offset() {
             // get integration test app and launchpad address
-            let (mut app, launchpad_address) = create_launchpad_with_number_supply(20);
+            let (mut app, launchpad_address) = create_launchpad_with_number_supply(20, Some(10u64));
 
             // ADD FIRST PHASE to the first position
             // prepare execute msg for adding new phase to launchpad
@@ -2688,18 +2695,6 @@ mod tests {
                 Addr::unchecked(ADMIN),
                 Addr::unchecked(launchpad_address.clone()),
                 &add_whitelist_msg,
-                &[],
-            );
-            assert!(res.is_ok());
-
-            // set offset to 10
-            let set_offset_msg = ExecuteMsg::UpdateTokenIdOffset { offset: 10 };
-
-            // execute set offset msg
-            let res = app.execute_contract(
-                Addr::unchecked(ADMIN),
-                Addr::unchecked(launchpad_address.clone()),
-                &set_offset_msg,
                 &[],
             );
             assert!(res.is_ok());
@@ -2817,7 +2812,7 @@ mod tests {
         #[test]
         fn mint_100_tokens() {
             // get integration test app and launchpad address
-            let (mut app, launchpad_address) = create_launchpad_with_number_supply(199);
+            let (mut app, launchpad_address) = create_launchpad_with_number_supply(199, None);
 
             // ADD FIRST PHASE to the first position
             // prepare execute msg for adding new phase to launchpad

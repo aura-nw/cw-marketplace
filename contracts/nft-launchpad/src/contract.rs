@@ -82,6 +82,14 @@ pub fn instantiate(
     let randomness = randomness_from_str(msg.random_seed).unwrap();
     RANDOM_SEED.save(deps.storage, &randomness)?;
 
+    let mut token_id_offset = 0u64;
+    // update the token id offset
+    if let Some(offset) = msg.collection_info.token_id_offset {
+        token_id_offset = offset;
+    }
+
+    TOKEN_ID_OFFSET.save(deps.storage, &token_id_offset)?;
+
     // we will pick the reserved token ids from the list
     if let Some(mut reserved_tokens) = msg.collection_info.reserved_tokens {
         // remaining token ids will be equal to the max supply + len of reserved token ids
@@ -91,7 +99,8 @@ pub fn instantiate(
         // reverse the reserved token ids to get descending order
         reserved_tokens.reverse();
         // for each reserved token id
-        for token_id in reserved_tokens {
+        for mut token_id in reserved_tokens {
+            token_id -= token_id_offset;
             get_token_id_from_position(deps.storage, token_id - 1, remaining_token_ids)?;
             remaining_token_ids -= 1;
         }
@@ -197,9 +206,6 @@ pub fn execute(
         ExecuteMsg::ActivateLaunchpad {} => active_launchpad(deps, info),
         ExecuteMsg::DeactivateLaunchpad {} => deactive_launchpad(deps, info),
         ExecuteMsg::Withdraw { denom } => withdraw(deps, env, info, denom),
-        ExecuteMsg::UpdateTokenIdOffset { offset } => {
-            update_token_id_offset(deps, env, info, offset)
-        }
     }
 }
 
@@ -942,31 +948,6 @@ pub fn withdraw(
     }
 
     Ok(res.add_attribute("withdraw_time", env.block.time.to_string()))
-}
-
-fn update_token_id_offset(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    offset: u64,
-) -> Result<Response, ContractError> {
-    // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, &env) {
-        return Err(ContractError::LaunchpadStarted {});
-    }
-
-    // check if the sender is not the owner, then return error
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.admin != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    // update the token id offset
-    TOKEN_ID_OFFSET.save(deps.storage, &offset)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "update_token_id_offset")
-        .add_attribute("offset", offset.to_string()))
 }
 
 // we need a function to check when the launchpad started

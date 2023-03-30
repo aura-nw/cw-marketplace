@@ -44,9 +44,6 @@ pub enum ExecuteMsg {
     Withdraw {
         denom: String,
     },
-    UpdateTokenIdOffset {
-        offset: u64,
-    },
 }
 
 /// Message type for `migrate` entry_point
@@ -82,4 +79,5 @@ pub struct ColectionInfo {
     pub royalty_percentage: Option<u64>,
     pub royalty_payment_address: Option<String>,
     pub reserved_tokens: Option<Vec<u64>>,
+    pub token_id_offset: Option<u64>,
 }
