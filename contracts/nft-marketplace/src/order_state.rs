@@ -10,6 +10,7 @@ pub type User = Addr;
 pub enum OrderType {
     OFFER,
     LISTING,
+    AUCTION,
 }
 
 #[cw_serde]
@@ -163,6 +164,23 @@ impl<'a> IndexList<OrderComponents> for OfferIndexes<'a> {
 
 // helper function create a IndexedMap for listings
 pub fn orders<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, OfferIndexes<'a>> {
+    let indexes = OfferIndexes {
+        users: MultiIndex::new(
+            |_pk: &[u8], l: &OrderComponents| (l.order_id.0.clone()),
+            "orders",
+            "orders__user_address",
+        ),
+        nfts: MultiIndex::new(
+            |_pk: &[u8], l: &OrderComponents| (l.order_id.1.clone(), l.order_id.2.clone()),
+            "orders",
+            "orders__nft_identifier",
+        ),
+    };
+    IndexedMap::new("orders", indexes)
+}
+
+// helper function create a IndexedMap for listings
+pub fn auctions<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, OfferIndexes<'a>> {
     let indexes = OfferIndexes {
         users: MultiIndex::new(
             |_pk: &[u8], l: &OrderComponents| (l.order_id.0.clone()),
