@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, BlockInfo};
 use cw721::Expiration;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 
@@ -73,54 +73,34 @@ pub enum Side {
 }
 
 #[cw_serde]
-pub enum ItemType {
-    NATIVE,
-    CW20,
-    CW721,
-}
-
-#[cw_serde]
 pub struct OfferItem {
-    pub item_type: ItemType,
     pub item: Asset,
-    pub start_amount: u128,
-    pub end_amount: u128,
 }
 
-pub fn offer_item(
-    item_type: &ItemType,
-    item: &Asset,
-    start_amount: &u128,
-    end_amount: &u128,
-) -> OfferItem {
-    OfferItem {
-        item_type: item_type.clone(),
-        item: item.clone(),
-        start_amount: *start_amount,
-        end_amount: *end_amount,
-    }
+pub fn offer_item(item: &Asset) -> OfferItem {
+    OfferItem { item: item.clone() }
 }
 
 #[cw_serde]
 pub struct ConsiderationItem {
-    pub item_type: ItemType,
     pub item: Asset,
     pub start_amount: u128,
-    pub end_amount: u128,
+    pub step_amount: Option<u8>,
+    pub end_amount: Option<u128>,
     pub recipient: Addr,
 }
 
 pub fn consideration_item(
-    item_type: &ItemType,
     item: &Asset,
     start_amount: &u128,
-    end_amount: &u128,
+    step_amount: &Option<u8>,
+    end_amount: &Option<u128>,
     recipient: &Addr,
 ) -> ConsiderationItem {
     ConsiderationItem {
-        item_type: item_type.clone(),
         item: item.clone(),
         start_amount: *start_amount,
+        step_amount: *step_amount,
         end_amount: *end_amount,
         recipient: recipient.clone(),
     }
@@ -143,15 +123,27 @@ pub struct OrderComponents {
     pub order_type: OrderType,
     pub order_id: OrderKey,
     pub offerer: User,
+    pub recipient: Option<User>,
     pub offer: Vec<OfferItem>,
     pub consideration: Vec<ConsiderationItem>,
     pub start_time: Option<Expiration>,
     pub end_time: Option<Expiration>,
 }
 
+impl OrderComponents {
+    // expired is when a listing has passed the end_time
+    pub fn is_expired(&self, block_info: &BlockInfo) -> bool {
+        match self.end_time {
+            Some(end_time) => end_time.is_expired(block_info),
+            None => false,
+        }
+    }
+}
+
 pub struct OfferIndexes<'a> {
     pub users: MultiIndex<'a, User, OrderComponents, OrderKey>,
     pub nfts: MultiIndex<'a, (Addr, String), OrderComponents, OrderKey>,
+    pub buyer: Option<MultiIndex<'a, User, OrderComponents, OrderKey>>,
 }
 
 impl<'a> IndexList<OrderComponents> for OfferIndexes<'a> {
@@ -175,6 +167,8 @@ pub fn orders<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, OfferIndexes<'a
             "orders",
             "orders__nft_identifier",
         ),
+        // ignore the buyer index for now
+        buyer: None,
     };
     IndexedMap::new("orders", indexes)
 }
@@ -192,6 +186,11 @@ pub fn auctions<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, OfferIndexes<
             "orders",
             "orders__nft_identifier",
         ),
+        buyer: Some(MultiIndex::new(
+            |_pk: &[u8], l: &OrderComponents| (l.recipient.clone().unwrap()),
+            "orders",
+            "orders__buyer",
+        )),
     };
     IndexedMap::new("orders", indexes)
 }

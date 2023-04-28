@@ -1,14 +1,16 @@
+use std::vec;
+
 use crate::order_state::{
-    consideration_item, offer_item, order_key, Asset, ItemType, OrderComponents, OrderType,
-    PaymentAsset, CW20, NFT,
+    consideration_item, offer_item, order_key, Asset, OrderComponents, OrderType, PaymentAsset,
+    CW20, NATIVE, NFT,
 };
 use crate::{
     state::{listing_key, AuctionConfig, Listing, MarketplaceContract},
     ContractError,
 };
 use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    StdResult, Uint128, WasmMsg, WasmQuery,
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, QueryRequest,
+    Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{AllowanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 use cw2981_royalties::{
@@ -34,6 +36,25 @@ impl MarketplaceContract<'static> {
                     && end_time.is_some()
                     && start_time.unwrap() >= end_time.unwrap()
                 {
+                    return false;
+                }
+                true
+            }
+            AuctionConfig::EnglishAuction {
+                start_price,
+                step_price: _,
+                buyout_price,
+                start_time,
+                end_time,
+            } => {
+                // if start_price and top_price is set, we need to check if start_price < top_price
+                if buyout_price.is_some()
+                    && start_price.clone().amount >= buyout_price.clone().unwrap().into()
+                {
+                    return false;
+                }
+                // if start_time is not set, we don't need to check
+                if start_time.is_some() && start_time.unwrap() >= *end_time {
                     return false;
                 }
                 true
@@ -163,6 +184,9 @@ impl MarketplaceContract<'static> {
             AuctionConfig::FixedPrice { .. } => {
                 self.process_buy_fixed_price(deps, env, info, &listing)
             }
+            _ => Err(ContractError::CustomError {
+                val: ("Auction config invalid".to_string()),
+            }),
         }
     }
 
@@ -234,6 +258,9 @@ impl MarketplaceContract<'static> {
 
                 Ok(res)
             }
+            _ => Err(ContractError::CustomError {
+                val: ("Auction config invalid".to_string()),
+            }),
         }
     }
 
@@ -344,25 +371,20 @@ impl MarketplaceContract<'static> {
             let order_key = order_key(&info.sender, &contract_address, &token_id);
 
             // the offer item will contain the infomation of cw20 token
-            let offer_item = offer_item(
-                &ItemType::CW20,
-                &Asset::Cw20(CW20 {
-                    contract_address: token_address,
-                    amount,
-                }),
-                &0u128,
-                &0u128,
-            );
+            let offer_item = offer_item(&Asset::Cw20(CW20 {
+                contract_address: token_address,
+                amount,
+            }));
 
             // the consideration item will contain the infomation of nft
             let consideration_item = consideration_item(
-                &ItemType::CW721,
                 &Asset::Nft(NFT {
                     contract_address,
                     token_id: Some(token_id),
                 }),
                 &0u128,
-                &0u128,
+                &Some(0u8),
+                &Some(0u128),
                 &info.sender,
             );
 
@@ -371,6 +393,7 @@ impl MarketplaceContract<'static> {
                 order_type: OrderType::OFFER, // The type of offer must be OFFER
                 order_id: order_key.clone(),
                 offerer: info.sender,
+                recipient: None, // this parameter is not used in OFFER type
                 offer: [offer_item].to_vec(),
                 consideration: [consideration_item].to_vec(),
                 start_time: None,
@@ -595,6 +618,193 @@ impl MarketplaceContract<'static> {
         Ok(Response::new()
             .add_attribute("method", "edit_vaura_token")
             .add_attribute("vaura_token_address", token_address))
+    }
+
+    pub fn execute_auction_nft(
+        &self,
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        nft: NFT,
+        auction_config: AuctionConfig,
+    ) -> Result<Response, ContractError> {
+        // No need to check the owner of the NFT, because the nft must be transferred to the contract
+
+        // if the AuctionConfig is match with EnglishAuction
+        match auction_config {
+            AuctionConfig::EnglishAuction {
+                start_price,
+                step_price,
+                buyout_price,
+                start_time,
+                end_time,
+            } => {
+                // if the start_time is not set, then set it to the current time + 1s
+                let start_time =
+                    start_time.unwrap_or(Cw721Expiration::AtTime(env.block.time.plus_seconds(1)));
+                // check if the start_time is greater than the current time
+                if start_time.is_expired(&env.block) || start_time >= end_time {
+                    return Err(ContractError::CustomError {
+                        val: ("Time config invalid".to_string()),
+                    });
+                }
+
+                // match the token_id of nft
+                match nft.token_id {
+                    Some(token_id) => {
+                        let mut res = Response::new();
+                        // transfer nft to contract
+                        let transfer_nft_msg = WasmMsg::Execute {
+                            contract_addr: nft.contract_address.to_string(),
+                            msg: to_binary(&Cw2981ExecuteMsg::TransferNft {
+                                recipient: env.contract.address.to_string(),
+                                token_id: token_id.clone(),
+                            })?,
+                            funds: vec![],
+                        };
+                        res = res.add_message(transfer_nft_msg);
+
+                        // create offer item based on the nft
+                        let offer_item = offer_item(&Asset::Nft(NFT {
+                            contract_address: nft.contract_address.clone(),
+                            token_id: Some(token_id.clone()),
+                        }));
+
+                        // create consideration item based on the auction config
+                        let consideration_item = consideration_item(
+                            &Asset::Native(NATIVE {
+                                denom: start_price.denom,
+                                amount: start_price.amount.into(),
+                            }),
+                            &start_price.amount.into(),
+                            &step_price,
+                            &buyout_price,
+                            &info.sender,
+                        );
+
+                        // create order key based on the sender address, nft.contract_address and nft.token_id
+                        let order_key = order_key(&info.sender, &nft.contract_address, &token_id);
+
+                        // create order
+                        let order = OrderComponents {
+                            order_type: OrderType::AUCTION,
+                            order_id: order_key.clone(),
+                            offerer: info.sender.clone(),
+                            recipient: Some(info.sender.clone()), // when initiate auction, the recipient is the offerer
+                            offer: vec![offer_item],
+                            consideration: vec![consideration_item],
+                            start_time: Some(start_time),
+                            end_time: Some(end_time),
+                        };
+
+                        // store order
+                        self.auctions.save(deps.storage, order_key, &order)?;
+
+                        // remove listing if exists
+                        let listing_key = listing_key(&nft.contract_address, &token_id);
+                        self.listings.remove(deps.storage, listing_key)?;
+
+                        Ok(res.add_attributes([
+                            ("method", "auction_nft"),
+                            ("sender", info.sender.as_str()),
+                            ("contract_address", nft.contract_address.as_str()),
+                            ("token_id", token_id.as_str()),
+                            ("start_price", start_price.amount.to_string().as_str()),
+                            ("step_price", step_price.unwrap_or(0).to_string().as_str()),
+                            (
+                                "buyout_price",
+                                buyout_price.unwrap_or(0).to_string().as_str(),
+                            ),
+                            ("start_time", start_time.to_string().as_str()),
+                            ("end_time", end_time.to_string().as_str()),
+                        ]))
+                    }
+                    None => {
+                        return Err(ContractError::CustomError {
+                            val: ("Collection offer is not supported".to_string()),
+                        })
+                    }
+                }
+            }
+            _ => Err(ContractError::CustomError {
+                val: ("Invalid auction config".to_string()),
+            }),
+        }
+    }
+
+    pub fn execute_bid_nft(
+        &self,
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        offerer: Addr,
+        nft: NFT,
+        bid_price: u128,
+    ) -> Result<Response, ContractError> {
+        // check if the amount in funds is equal to the bid_price
+        if info.funds.len() != 1 || info.funds[0].amount != Uint128::from(bid_price) {
+            return Err(ContractError::CustomError {
+                val: ("Funds and bidding price invalid".to_string()),
+            });
+        }
+
+        // nft.token_id must be exist
+        if nft.token_id.is_none() {
+            return Err(ContractError::CustomError {
+                val: ("Collection auction is not supported".to_string()),
+            });
+        }
+
+        // create order key based on the offerer address, nft.contract_address and nft.token_id
+        let order_key = order_key(&offerer, &nft.contract_address, &nft.token_id.unwrap());
+
+        // get order
+        let mut order = self.auctions.load(deps.storage, order_key.clone())?;
+
+        // check if the order is expired
+        if order.is_expired(&env.block) {
+            return Err(ContractError::CustomError {
+                val: ("Auction is expired".to_string()),
+            });
+        }
+
+        // match the item of consideration of the order
+        match &order.consideration[0].item {
+            Asset::Native(current_price) => {
+                // check if the bid_price is greater than the current_price + step_price
+                let step_price = Uint128::from(current_price.amount)
+                    * Decimal::percent(order.consideration[0].step_amount.unwrap().into());
+                if bid_price < current_price.amount.checked_add(step_price.into()).unwrap() {
+                    return Err(ContractError::CustomError {
+                        val: ("Bid price invalid".to_string()),
+                    });
+                }
+
+                // update consideration item
+                order.consideration[0].item = Asset::Native(NATIVE {
+                    denom: current_price.denom.clone(),
+                    amount: bid_price.into(),
+                });
+
+                // if the remaining time is less than 10 minutes, extend the end_time by 10 minutes
+                if order
+                    .end_time
+                    .unwrap()
+                    .le(&Cw721Expiration::AtTime(env.block.time.plus_seconds(600)))
+                {
+                    order.end_time =
+                        Some(Cw721Expiration::AtTime(env.block.time.plus_seconds(600)));
+                }
+
+                // save order
+                self.auctions.save(deps.storage, order_key, &order)?;
+
+                Ok(Response::new())
+            }
+            _ => Err(ContractError::CustomError {
+                val: ("Invalid consideration item".to_string()),
+            }),
+        }
     }
 
     // function to process payment transfer with royalty

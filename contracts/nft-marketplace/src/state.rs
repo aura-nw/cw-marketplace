@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, BlockInfo, Coin};
 use cw721::Expiration;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex, UniqueIndex};
 
-use crate::order_state::{orders, OfferIndexes, OrderComponents, OrderKey, auctions};
+use crate::order_state::{auctions, orders, OfferIndexes, OrderComponents, OrderKey};
 
 #[cw_serde]
 pub enum AuctionConfig {
@@ -11,6 +11,13 @@ pub enum AuctionConfig {
         price: Coin,
         start_time: Option<Expiration>, // we use expiration for convinience
         end_time: Option<Expiration>,   // it's required that start_time < end_time
+    },
+    EnglishAuction {
+        start_price: Coin,          // require start_price to determine the denom
+        step_price: Option<u8>,     // step_price is a percentage of the current price
+        buyout_price: Option<u128>, // buyout_price is the wish price amount of the seller
+        start_time: Option<Expiration>,
+        end_time: Expiration,
     },
 }
 
@@ -33,6 +40,7 @@ impl Listing {
                 Some(time) => time.is_expired(block_info),
                 None => false,
             },
+            _ => false,
         }
     }
 }

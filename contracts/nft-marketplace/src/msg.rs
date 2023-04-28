@@ -50,6 +50,17 @@ pub enum ExecuteMsg {
     EditVauraToken {
         token_address: String,
     },
+    // user auction nft
+    AuctionNft {
+        nft: NFT,
+        auction_config: AuctionConfig,
+    },
+    // user bid nft
+    BidNft {
+        offerer: String,
+        nft: NFT,
+        bid_price: u128,
+    },
 }
 
 #[cw_serde]
