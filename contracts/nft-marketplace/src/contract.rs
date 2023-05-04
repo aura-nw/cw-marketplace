@@ -109,6 +109,13 @@ pub fn execute(
             nft,
             bid_price,
         ),
+        ExecuteMsg::TerminateAuction { offerer, nft } => contract().execute_terminate_auction(
+            deps,
+            _env,
+            info,
+            api.addr_validate(&offerer)?,
+            nft,
+        ),
     }
 }
 

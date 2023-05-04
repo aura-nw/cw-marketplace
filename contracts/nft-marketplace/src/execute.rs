@@ -9,8 +9,8 @@ use crate::{
     ContractError,
 };
 use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, QueryRequest,
-    Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    coin, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
+    QueryRequest, Response, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw20::{AllowanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 use cw2981_royalties::{
@@ -741,13 +741,6 @@ impl MarketplaceContract<'static> {
         nft: NFT,
         bid_price: u128,
     ) -> Result<Response, ContractError> {
-        // check if the amount in funds is equal to the bid_price
-        if info.funds.len() != 1 || info.funds[0].amount != Uint128::from(bid_price) {
-            return Err(ContractError::CustomError {
-                val: ("Funds and bidding price invalid".to_string()),
-            });
-        }
-
         // nft.token_id must be exist
         if nft.token_id.is_none() {
             return Err(ContractError::CustomError {
@@ -755,8 +748,19 @@ impl MarketplaceContract<'static> {
             });
         }
 
+        // check if the amount in funds is equal to the bid_price
+        if info.funds.len() != 1 || info.funds[0].amount != Uint128::from(bid_price) {
+            return Err(ContractError::CustomError {
+                val: ("Different funding amount and bidding price.".to_string()),
+            });
+        }
+
         // create order key based on the offerer address, nft.contract_address and nft.token_id
-        let order_key = order_key(&offerer, &nft.contract_address, &nft.token_id.unwrap());
+        let order_key = order_key(
+            &offerer,
+            &nft.contract_address,
+            &nft.token_id.clone().unwrap(),
+        );
 
         // get order
         let mut order = self.auctions.load(deps.storage, order_key.clone())?;
@@ -771,16 +775,44 @@ impl MarketplaceContract<'static> {
         // match the item of consideration of the order
         match &order.consideration[0].item {
             Asset::Native(current_price) => {
-                // check if the bid_price is greater than the current_price + step_price
-                let step_price = Uint128::from(current_price.amount)
-                    * Decimal::percent(order.consideration[0].step_amount.unwrap().into());
-                if bid_price < current_price.amount.checked_add(step_price.into()).unwrap() {
-                    return Err(ContractError::CustomError {
-                        val: ("Bid price invalid".to_string()),
-                    });
+                let mut res = Response::new();
+                // TODO: if the bidding price is greater than the buyout price, terminate the auction and transfer the nft to the bidder
+
+                // if the recipient's different than offerer (the first bidder),
+                // the bid_price must be greater than the current_price + step_price
+                // and we must return the previous bid_price to the previous bidder
+                let previous_bidder = order.recipient.clone().unwrap();
+                if previous_bidder != order.offerer {
+                    // check if the bid_price is greater than the current_price + step_price
+                    let step_price = Uint128::from(current_price.amount)
+                        * Decimal::percent(order.consideration[0].step_amount.unwrap().into());
+                    if bid_price < current_price.amount.checked_add(step_price.into()).unwrap() {
+                        return Err(ContractError::CustomError {
+                            val: ("Bidding price invalid".to_string()),
+                        });
+                    }
+
+                    // transfer the previous bid_price to the previous bidder
+                    let bank_transfer = BankMsg::Send {
+                        to_address: previous_bidder.to_string(),
+                        amount: vec![coin(current_price.amount, current_price.denom.clone())],
+                    };
+                    res = res.add_message(bank_transfer);
+                } else {
+                    // if the recipient is the offerer (the first bidder),
+                    // the bid_price must be greater than or equal the current_price
+                    if bid_price < current_price.amount {
+                        return Err(ContractError::CustomError {
+                            val: ("Bidding price invalid".to_string()),
+                        });
+                    }
                 }
 
-                // update consideration item
+                // update order information
+                // the recipient is the bidder
+                order.recipient = Some(info.sender.clone());
+
+                // consideration item
                 order.consideration[0].item = Asset::Native(NATIVE {
                     denom: current_price.denom.clone(),
                     amount: bid_price.into(),
@@ -799,7 +831,90 @@ impl MarketplaceContract<'static> {
                 // save order
                 self.auctions.save(deps.storage, order_key, &order)?;
 
-                Ok(Response::new())
+                Ok(res.add_attributes([
+                    ("method", "bid_nft"),
+                    ("sender", info.sender.as_str()),
+                    ("contract_address", nft.contract_address.as_str()),
+                    ("token_id", &nft.token_id.unwrap()),
+                    ("bid_price", bid_price.to_string().as_str()),
+                ]))
+            }
+            _ => Err(ContractError::CustomError {
+                val: ("Invalid consideration item".to_string()),
+            }),
+        }
+    }
+
+    pub fn execute_terminate_auction(
+        &self,
+        deps: DepsMut,
+        env: Env,
+        info: MessageInfo,
+        offerer: Addr,
+        nft: NFT,
+    ) -> Result<Response, ContractError> {
+        // nft.token_id must be exist
+        if nft.token_id.is_none() {
+            return Err(ContractError::CustomError {
+                val: ("Collection auction is not supported".to_string()),
+            });
+        }
+
+        // create order key based on the offerer address, nft.contract_address and nft.token_id
+        let order_key = order_key(
+            &offerer,
+            &nft.contract_address,
+            &nft.token_id.clone().unwrap(),
+        );
+
+        // get order
+        let order = self.auctions.load(deps.storage, order_key.clone())?;
+
+        // only the offerer or recipient can terminate the auction
+        if info.sender != order.offerer && info.sender != order.recipient.clone().unwrap() {
+            return Err(ContractError::CustomError {
+                val: ("Unauthorized".to_string()),
+            });
+        }
+
+        // check if the order is not expired
+        if !order.end_time.unwrap().is_expired(&env.block) {
+            return Err(ContractError::CustomError {
+                val: ("Auction is not expired".to_string()),
+            });
+        }
+
+        let mut res = Response::new();
+
+        // transfer the nft to the recipient
+        let transfer_nft_msg = WasmMsg::Execute {
+            contract_addr: nft.contract_address.to_string(),
+            msg: to_binary(&Cw2981ExecuteMsg::TransferNft {
+                recipient: order.recipient.unwrap().to_string(),
+                token_id: nft.token_id.clone().unwrap(),
+            })?,
+            funds: vec![],
+        };
+        res = res.add_message(transfer_nft_msg);
+
+        // send the native token to the offerer
+        match &order.consideration[0].item {
+            Asset::Native(current_price) => {
+                let native_transfer = BankMsg::Send {
+                    to_address: order.offerer.to_string(),
+                    amount: vec![coin(current_price.amount, current_price.denom.clone())],
+                };
+                res = res.add_message(native_transfer);
+
+                // delete order
+                self.auctions.remove(deps.storage, order_key)?;
+
+                Ok(res.add_attributes([
+                    ("method", "terminate_auction"),
+                    ("sender", info.sender.as_str()),
+                    ("contract_address", nft.contract_address.as_str()),
+                    ("token_id", nft.token_id.unwrap().as_str()),
+                ]))
             }
             _ => Err(ContractError::CustomError {
                 val: ("Invalid consideration item".to_string()),

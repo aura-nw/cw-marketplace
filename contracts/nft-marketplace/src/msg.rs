@@ -61,6 +61,11 @@ pub enum ExecuteMsg {
         nft: NFT,
         bid_price: u128,
     },
+    // terminate auction
+    TerminateAuction {
+        offerer: String,
+        nft: NFT,
+    },
 }
 
 #[cw_serde]
