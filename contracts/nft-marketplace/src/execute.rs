@@ -682,6 +682,7 @@ impl MarketplaceContract<'static> {
                             &info.sender,
                         );
 
+                        // TODO: maybe the user_address should be the market contract address :-?
                         // create order key based on the sender address, nft.contract_address and nft.token_id
                         let order_key = order_key(&info.sender, &nft.contract_address, &token_id);
 

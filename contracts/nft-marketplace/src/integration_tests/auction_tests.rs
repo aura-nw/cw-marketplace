@@ -97,6 +97,7 @@ fn bid_auction(
     cw2981_address: String,
     marketplace_address: String,
     bid_price: u128,
+    bid_funds: Option<u128>,
 ) -> AnyResult<AppResponse> {
     // owner creates auction
     // prepare bid nft message
@@ -110,12 +111,21 @@ fn bid_auction(
     };
 
     // offerer (USER_1) creates offer
-    (*app).execute_contract(
-        Addr::unchecked(sender.to_string()),
-        Addr::unchecked(marketplace_address),
-        &bid_auction_msg,
-        &[],
-    )
+    if let Some(bid_funds) = bid_funds {
+        (*app).execute_contract(
+            Addr::unchecked(sender.to_string()),
+            Addr::unchecked(marketplace_address),
+            &bid_auction_msg,
+            &[coin(bid_funds, NATIVE_DENOM)],
+        )
+    } else {
+        (*app).execute_contract(
+            Addr::unchecked(sender.to_string()),
+            Addr::unchecked(marketplace_address),
+            &bid_auction_msg,
+            &[],
+        )
+    }
 }
 
 mod create_auction {
@@ -341,7 +351,119 @@ mod create_auction {
 }
 
 mod bid_auction {
+    use cosmwasm_std::Uint128;
+
     use super::*;
+
+    #[test]
+    fn user_cannot_bid_auction_because_not_enought_funds() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_1, OWNER, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            OWNER,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfig::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_price: Some(STEP_PRICE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            USER_1,
+            cw2981_address,
+            marketplace_address,
+            10000u128,
+            None,
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Custom Error val: \"Different funding amount and bidding price.\""
+        );
+    }
+
+    #[test]
+    fn user_can_not_bid_auction_because_price_too_small() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_1, OWNER, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            OWNER,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfig::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_price: Some(STEP_PRICE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            USER_1,
+            cw2981_address,
+            marketplace_address,
+            START_PRICE - 1,
+            Some(START_PRICE - 1),
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Custom Error val: \"Bidding price invalid\""
+        );
+    }
 
     #[test]
     fn user_can_bid_auction() {
@@ -389,11 +511,107 @@ mod bid_auction {
             USER_1,
             cw2981_address,
             marketplace_address,
-            10000u128,
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+    }
+
+    #[test]
+    fn the_new_bid_price_must_greater_than_the_old_one() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_1, OWNER, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            OWNER,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfig::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_price: Some(STEP_PRICE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        // the market place should has the START_PRICE NATIVE_DENOM
+        let market_balance = app
+            .wrap()
+            .query_balance(Addr::unchecked(marketplace_address.clone()), NATIVE_DENOM)
+            .unwrap();
+        assert_eq!(market_balance.amount, Uint128::from(START_PRICE));
+
+        // bid auction again
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            (START_PRICE * 105 / 100) - 1,
+            Some((START_PRICE * 105 / 100) - 1),
         );
         assert_eq!(
             res.unwrap_err().source().unwrap().to_string(),
-            "Custom Error val: \"Different funding amount and bidding price.\""
+            "Custom Error val: \"Bidding price invalid\""
+        );
+
+        // bid auction again
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            USER_1,
+            cw2981_address,
+            marketplace_address.clone(),
+            START_PRICE * 105 / 100,
+            Some(START_PRICE * 105 / 100),
+        );
+        assert!(res.is_ok());
+
+        // the market place should has the START_PRICE * 105 / 100 NATIVE_DENOM
+        let market_balance = app
+            .wrap()
+            .query_balance(Addr::unchecked(marketplace_address), NATIVE_DENOM)
+            .unwrap();
+        assert_eq!(
+            market_balance.amount,
+            Uint128::from(START_PRICE * 105 / 100)
         );
     }
 }
