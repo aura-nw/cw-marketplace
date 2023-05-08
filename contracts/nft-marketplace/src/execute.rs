@@ -640,8 +640,8 @@ impl MarketplaceContract<'static> {
                 end_time,
             } => {
                 // if the start_time is not set, then set it to the current time + 1s
-                let start_time =
-                    start_time.unwrap_or(Cw721Expiration::AtTime(env.block.time.plus_seconds(1)));
+                let start_time = start_time
+                    .unwrap_or_else(|| Cw721Expiration::AtTime(env.block.time.plus_seconds(1)));
                 // check if the start_time is greater than the current time
                 if start_time.is_expired(&env.block) || start_time >= end_time {
                     return Err(ContractError::CustomError {
