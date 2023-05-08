@@ -57,13 +57,11 @@ pub enum ExecuteMsg {
     },
     // user bid nft
     BidNft {
-        offerer: String,
         nft: NFT,
         bid_price: u128,
     },
     // terminate auction
     TerminateAuction {
-        offerer: String,
         nft: NFT,
     },
 }

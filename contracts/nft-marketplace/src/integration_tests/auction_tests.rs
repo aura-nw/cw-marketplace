@@ -93,7 +93,6 @@ fn bid_auction(
     app: &mut App,
     token_id: Option<String>,
     sender: &str,
-    offerer: &str,
     cw2981_address: String,
     marketplace_address: String,
     bid_price: u128,
@@ -102,7 +101,6 @@ fn bid_auction(
     // owner creates auction
     // prepare bid nft message
     let bid_auction_msg = ExecuteMsg::BidNft {
-        offerer: offerer.to_string(),
         nft: NFT {
             contract_address: Addr::unchecked(cw2981_address),
             token_id,
@@ -398,7 +396,6 @@ mod bid_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             OWNER,
-            USER_1,
             cw2981_address,
             marketplace_address,
             10000u128,
@@ -453,7 +450,6 @@ mod bid_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             OWNER,
-            USER_1,
             cw2981_address,
             marketplace_address,
             START_PRICE - 1,
@@ -508,7 +504,6 @@ mod bid_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             OWNER,
-            USER_1,
             cw2981_address,
             marketplace_address,
             START_PRICE,
@@ -560,7 +555,6 @@ mod bid_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             OWNER,
-            USER_1,
             cw2981_address.clone(),
             marketplace_address.clone(),
             START_PRICE,
@@ -580,7 +574,6 @@ mod bid_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             OWNER,
-            USER_1,
             cw2981_address.clone(),
             marketplace_address.clone(),
             (START_PRICE * 105 / 100) - 1,
@@ -596,7 +589,6 @@ mod bid_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             OWNER,
-            USER_1,
             cw2981_address,
             marketplace_address.clone(),
             START_PRICE * 105 / 100,

@@ -682,9 +682,9 @@ impl MarketplaceContract<'static> {
                             &info.sender,
                         );
 
-                        // TODO: maybe the user_address should be the market contract address :-?
-                        // create order key based on the sender address, nft.contract_address and nft.token_id
-                        let order_key = order_key(&info.sender, &nft.contract_address, &token_id);
+                        // create order key based on the marketplace address, nft.contract_address and nft.token_id
+                        let order_key =
+                            order_key(&env.contract.address, &nft.contract_address, &token_id);
 
                         // create order
                         let order = OrderComponents {
@@ -738,7 +738,6 @@ impl MarketplaceContract<'static> {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        offerer: Addr,
         nft: NFT,
         bid_price: u128,
     ) -> Result<Response, ContractError> {
@@ -758,7 +757,7 @@ impl MarketplaceContract<'static> {
 
         // create order key based on the offerer address, nft.contract_address and nft.token_id
         let order_key = order_key(
-            &offerer,
+            &env.contract.address,
             &nft.contract_address,
             &nft.token_id.clone().unwrap(),
         );
@@ -851,7 +850,6 @@ impl MarketplaceContract<'static> {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        offerer: Addr,
         nft: NFT,
     ) -> Result<Response, ContractError> {
         // nft.token_id must be exist
@@ -863,7 +861,7 @@ impl MarketplaceContract<'static> {
 
         // create order key based on the offerer address, nft.contract_address and nft.token_id
         let order_key = order_key(
-            &offerer,
+            &env.contract.address,
             &nft.contract_address,
             &nft.token_id.clone().unwrap(),
         );
