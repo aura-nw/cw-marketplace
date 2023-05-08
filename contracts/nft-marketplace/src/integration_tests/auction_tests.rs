@@ -1,11 +1,11 @@
 use crate::msg::ExecuteMsg;
 use crate::order_state::NFT;
 
-use crate::test_setup::env::{instantiate_contracts, NATIVE_DENOM, OWNER, USER_1};
+use crate::test_setup::env::{instantiate_contracts, NATIVE_DENOM, OWNER, USER_1, USER_2};
 
 use anyhow::Result as AnyResult;
 
-use cosmwasm_std::{coin, Addr};
+use cosmwasm_std::{coin, Addr, Uint128};
 use cw_multi_test::{App, AppResponse, Executor};
 
 use crate::state::AuctionConfig;
@@ -26,7 +26,19 @@ fn mint_nft(app: &mut App, token_id: &str, owner: &str, cw2981_address: String) 
         token_uri: Some(
             "https://ipfs.io/ipfs/Qme7ss3ARVgxv6rXqVPiikMJ8u2NLgmgszg13pYrDKEoiu".to_string(),
         ),
-        extension: Metadata::default(),
+        extension: Metadata {
+            image: None,
+            image_data: None,
+            external_url: None,
+            description: None,
+            name: None,
+            attributes: None,
+            background_color: None,
+            animation_url: None,
+            youtube_url: None,
+            royalty_percentage: None,
+            royalty_payment_address: None,
+        },
     });
 
     (*app)
@@ -100,7 +112,7 @@ fn bid_auction(
 ) -> AnyResult<AppResponse> {
     // owner creates auction
     // prepare bid nft message
-    let bid_auction_msg = ExecuteMsg::BidNft {
+    let bid_auction_msg = ExecuteMsg::BidAuction {
         nft: NFT {
             contract_address: Addr::unchecked(cw2981_address),
             token_id,
@@ -124,6 +136,31 @@ fn bid_auction(
             &[],
         )
     }
+}
+
+fn settle_auction(
+    app: &mut App,
+    token_id: Option<String>,
+    sender: &str,
+    cw2981_address: String,
+    marketplace_address: String,
+) -> AnyResult<AppResponse> {
+    // sender settle auction
+    // prepare settle auction message
+    let settle_auction_msg = ExecuteMsg::SettleAuction {
+        nft: NFT {
+            contract_address: Addr::unchecked(cw2981_address),
+            token_id,
+        },
+    };
+
+    // sender settle auction
+    (*app).execute_contract(
+        Addr::unchecked(sender.to_string()),
+        Addr::unchecked(marketplace_address),
+        &settle_auction_msg,
+        &[],
+    )
 }
 
 mod create_auction {
@@ -152,7 +189,7 @@ mod create_auction {
         let res = create_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            USER_1,
+            OWNER,
             cw2981_address,
             marketplace_address,
             auction_config,
@@ -327,7 +364,7 @@ mod create_auction {
         let res = create_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            USER_1,
+            OWNER,
             cw2981_address.clone(),
             marketplace_address.clone(),
             auction_config,
@@ -349,8 +386,6 @@ mod create_auction {
 }
 
 mod bid_auction {
-    use cosmwasm_std::Uint128;
-
     use super::*;
 
     #[test]
@@ -384,7 +419,7 @@ mod bid_auction {
         let res = create_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            USER_1,
+            OWNER,
             cw2981_address.clone(),
             marketplace_address.clone(),
             auction_config,
@@ -395,7 +430,7 @@ mod bid_auction {
         let res = bid_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            OWNER,
+            USER_1,
             cw2981_address,
             marketplace_address,
             10000u128,
@@ -438,7 +473,7 @@ mod bid_auction {
         let res = create_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            USER_1,
+            OWNER,
             cw2981_address.clone(),
             marketplace_address.clone(),
             auction_config,
@@ -449,7 +484,7 @@ mod bid_auction {
         let res = bid_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            OWNER,
+            USER_1,
             cw2981_address,
             marketplace_address,
             START_PRICE - 1,
@@ -492,7 +527,7 @@ mod bid_auction {
         let res = create_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            USER_1,
+            OWNER,
             cw2981_address.clone(),
             marketplace_address.clone(),
             auction_config,
@@ -503,7 +538,7 @@ mod bid_auction {
         let res = bid_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            OWNER,
+            USER_1,
             cw2981_address,
             marketplace_address,
             START_PRICE,
@@ -543,7 +578,7 @@ mod bid_auction {
         let res = create_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            USER_1,
+            OWNER,
             cw2981_address.clone(),
             marketplace_address.clone(),
             auction_config,
@@ -554,7 +589,7 @@ mod bid_auction {
         let res = bid_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            OWNER,
+            USER_1,
             cw2981_address.clone(),
             marketplace_address.clone(),
             START_PRICE,
@@ -573,7 +608,7 @@ mod bid_auction {
         let res = bid_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            OWNER,
+            USER_2,
             cw2981_address.clone(),
             marketplace_address.clone(),
             (START_PRICE * 105 / 100) - 1,
@@ -588,7 +623,7 @@ mod bid_auction {
         let res = bid_auction(
             &mut app,
             Some(TOKEN_ID_1.to_string()),
-            OWNER,
+            USER_2,
             cw2981_address,
             marketplace_address.clone(),
             START_PRICE * 105 / 100,
@@ -604,6 +639,137 @@ mod bid_auction {
         assert_eq!(
             market_balance.amount,
             Uint128::from(START_PRICE * 105 / 100)
+        );
+    }
+}
+
+mod settle_auction {
+    use super::*;
+
+    #[test]
+    fn owner_can_settle_auction() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // // transfer nft to OWNER
+        // // prepare msg
+        // let msg: Cw721ExecuteMsg<Metadata, Metadata> = Cw721ExecuteMsg::TransferNft {
+        //     recipient: OWNER.to_string(),
+        //     token_id: TOKEN_ID_1.to_string(),
+        // };
+        // let res = app.execute_contract(
+        //     Addr::unchecked(USER_2.to_string()),
+        //     Addr::unchecked(cw2981_address.clone()),
+        //     &msg,
+        //     &[],
+        // );
+        // assert!(res.is_ok());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfig::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_price: Some(STEP_PRICE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of USER_1
+        let _user_1_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_1), NATIVE_DENOM)
+            .unwrap();
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(1001);
+        app.set_block(block_info);
+
+        // get the balance of OWNER
+        let _owner_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(OWNER), NATIVE_DENOM)
+            .unwrap();
+        // get the balance of USER_2
+        let _user_2_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_2), NATIVE_DENOM)
+            .unwrap();
+
+        // settle auction
+        let res = settle_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address,
+            marketplace_address,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of OWNER
+        let _owner_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(OWNER), NATIVE_DENOM)
+            .unwrap();
+        // get the balance of USER_1
+        let _user_1_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_1), NATIVE_DENOM)
+            .unwrap();
+        // get the balance of USER_2
+        let _user_2_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_2), NATIVE_DENOM)
+            .unwrap();
+
+        assert_eq!(
+            _owner_balance_after.amount.u128(),
+            _owner_balance_before.amount.u128() + (START_PRICE * 20 / 100)
+        );
+
+        assert_eq!(
+            _user_1_balance_after.amount.u128(),
+            _user_1_balance_before.amount.u128() - START_PRICE
+        );
+
+        assert_eq!(
+            _user_2_balance_after.amount.u128(),
+            _user_2_balance_before.amount.u128() + (START_PRICE * 80 / 100)
         );
     }
 }

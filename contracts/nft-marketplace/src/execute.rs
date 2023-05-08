@@ -48,9 +48,7 @@ impl MarketplaceContract<'static> {
                 end_time,
             } => {
                 // if start_price and top_price is set, we need to check if start_price < top_price
-                if buyout_price.is_some()
-                    && start_price.clone().amount >= (*buyout_price).unwrap().into()
-                {
+                if buyout_price.is_some() && start_price.amount >= (*buyout_price).unwrap().into() {
                     return false;
                 }
                 // if start_time is not set, we don't need to check
@@ -628,8 +626,6 @@ impl MarketplaceContract<'static> {
         nft: NFT,
         auction_config: AuctionConfig,
     ) -> Result<Response, ContractError> {
-        // No need to check the owner of the NFT, because the nft must be transferred to the contract
-
         // if the AuctionConfig is match with EnglishAuction
         match auction_config {
             AuctionConfig::EnglishAuction {
@@ -652,6 +648,27 @@ impl MarketplaceContract<'static> {
                 // match the token_id of nft
                 match nft.token_id {
                     Some(token_id) => {
+                        // check if user is the owner of the token
+                        let query_owner_msg = Cw721QueryMsg::OwnerOf {
+                            token_id: token_id.clone(),
+                            include_expired: Some(false),
+                        };
+                        let owner_response: StdResult<cw721::OwnerOfResponse> =
+                            deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                                contract_addr: nft.contract_address.to_string(),
+                                msg: to_binary(&query_owner_msg)?,
+                            }));
+                        match owner_response {
+                            Ok(owner) => {
+                                if owner.owner != info.sender {
+                                    return Err(ContractError::Unauthorized {});
+                                }
+                            }
+                            Err(_) => {
+                                return Err(ContractError::Unauthorized {});
+                            }
+                        }
+
                         let mut res = Response::new();
                         // transfer nft to contract
                         let transfer_nft_msg = WasmMsg::Execute {
@@ -731,7 +748,7 @@ impl MarketplaceContract<'static> {
         }
     }
 
-    pub fn execute_bid_nft(
+    pub fn execute_bid_auction(
         &self,
         deps: DepsMut,
         env: Env,
@@ -843,7 +860,7 @@ impl MarketplaceContract<'static> {
         }
     }
 
-    pub fn execute_terminate_auction(
+    pub fn execute_settle_auction(
         &self,
         deps: DepsMut,
         env: Env,
@@ -897,11 +914,24 @@ impl MarketplaceContract<'static> {
         // send the native token to the offerer
         match &order.consideration[0].item {
             Asset::Native(current_price) => {
-                let native_transfer = BankMsg::Send {
-                    to_address: order.offerer.to_string(),
-                    amount: vec![coin(current_price.amount, current_price.denom.clone())],
+                let payment = PaymentAsset::Native {
+                    denom: current_price.denom.clone(),
+                    amount: current_price.amount,
                 };
-                res = res.add_message(native_transfer);
+
+                let payment_messages = self.payment_with_royalty(
+                    &deps,
+                    &nft.contract_address,
+                    nft.token_id.as_ref().unwrap(),
+                    payment,
+                    &env.contract.address,
+                    &order.offerer,
+                );
+
+                // loop through all payment messages and add item to response to execute
+                for payment_message in payment_messages {
+                    res = res.add_message(payment_message);
+                }
 
                 // delete order
                 self.auctions.remove(deps.storage, order_key)?;

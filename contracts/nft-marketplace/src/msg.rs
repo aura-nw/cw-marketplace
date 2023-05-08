@@ -56,12 +56,12 @@ pub enum ExecuteMsg {
         auction_config: AuctionConfig,
     },
     // user bid nft
-    BidNft {
+    BidAuction {
         nft: NFT,
         bid_price: u128,
     },
     // terminate auction
-    TerminateAuction {
+    SettleAuction {
         nft: NFT,
     },
 }

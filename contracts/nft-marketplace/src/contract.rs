@@ -97,11 +97,11 @@ pub fn execute(
             nft,
             auction_config,
         } => contract().execute_auction_nft(deps, _env, info, nft, auction_config),
-        ExecuteMsg::BidNft { nft, bid_price } => {
-            contract().execute_bid_nft(deps, _env, info, nft, bid_price)
+        ExecuteMsg::BidAuction { nft, bid_price } => {
+            contract().execute_bid_auction(deps, _env, info, nft, bid_price)
         }
-        ExecuteMsg::TerminateAuction { nft } => {
-            contract().execute_terminate_auction(deps, _env, info, nft)
+        ExecuteMsg::SettleAuction { nft } => {
+            contract().execute_settle_auction(deps, _env, info, nft)
         }
     }
 }
