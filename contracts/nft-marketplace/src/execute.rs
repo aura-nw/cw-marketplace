@@ -49,7 +49,7 @@ impl MarketplaceContract<'static> {
             } => {
                 // if start_price and top_price is set, we need to check if start_price < top_price
                 if buyout_price.is_some()
-                    && start_price.clone().amount >= buyout_price.clone().unwrap().into()
+                    && start_price.clone().amount >= (*buyout_price).unwrap().into()
                 {
                     return false;
                 }
@@ -720,11 +720,9 @@ impl MarketplaceContract<'static> {
                             ("end_time", end_time.to_string().as_str()),
                         ]))
                     }
-                    None => {
-                        return Err(ContractError::CustomError {
-                            val: ("Collection offer is not supported".to_string()),
-                        })
-                    }
+                    None => Err(ContractError::CustomError {
+                        val: ("Collection offer is not supported".to_string()),
+                    }),
                 }
             }
             _ => Err(ContractError::CustomError {
@@ -815,7 +813,7 @@ impl MarketplaceContract<'static> {
                 // consideration item
                 order.consideration[0].item = Asset::Native(NATIVE {
                     denom: current_price.denom.clone(),
-                    amount: bid_price.into(),
+                    amount: bid_price,
                 });
 
                 // if the remaining time is less than 10 minutes, extend the end_time by 10 minutes

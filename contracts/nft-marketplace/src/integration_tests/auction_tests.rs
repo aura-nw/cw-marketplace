@@ -47,7 +47,7 @@ fn approval_token(
     marketplace_address: String,
 ) {
     let approve_msg: Cw721ExecuteMsg<Metadata, Metadata> = Cw721ExecuteMsg::Approve {
-        spender: marketplace_address.clone(),
+        spender: marketplace_address,
         token_id: token_id.to_string(),
         expires: None,
     };
@@ -153,8 +153,8 @@ mod create_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             USER_1,
-            cw2981_address.clone(),
-            marketplace_address.clone(),
+            cw2981_address,
+            marketplace_address,
             auction_config,
         );
         assert_eq!(
@@ -202,8 +202,8 @@ mod create_auction {
             &mut app,
             Some(TOKEN_ID_1.to_string()),
             USER_1,
-            cw2981_address.clone(),
-            marketplace_address.clone(),
+            cw2981_address,
+            marketplace_address,
             auction_config,
         );
         assert_eq!(
@@ -246,8 +246,8 @@ mod create_auction {
             &mut app,
             None,
             USER_1,
-            cw2981_address.clone(),
-            marketplace_address.clone(),
+            cw2981_address,
+            marketplace_address,
             auction_config,
         );
         assert_eq!(
@@ -286,8 +286,8 @@ mod create_auction {
             &mut app,
             None,
             USER_1,
-            cw2981_address.clone(),
-            marketplace_address.clone(),
+            cw2981_address,
+            marketplace_address,
             auction_config,
         );
         assert_eq!(
@@ -344,7 +344,7 @@ mod create_auction {
             .wrap()
             .query_wasm_smart(Addr::unchecked(cw2981_address), &query_msg)
             .unwrap();
-        assert_eq!(res.owner, marketplace_address.to_string());
+        assert_eq!(res.owner, marketplace_address);
     }
 }
 

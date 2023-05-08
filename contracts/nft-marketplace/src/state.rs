@@ -36,10 +36,10 @@ impl Listing {
     // expired is when a listing has passed the end_time
     pub fn is_expired(&self, block_info: &BlockInfo) -> bool {
         match self.auction_config {
-            AuctionConfig::FixedPrice { end_time, .. } => match end_time {
-                Some(time) => time.is_expired(block_info),
-                None => false,
-            },
+            AuctionConfig::FixedPrice {
+                end_time: Some(time),
+                ..
+            } => time.is_expired(block_info),
             _ => false,
         }
     }
