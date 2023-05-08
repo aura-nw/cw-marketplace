@@ -211,6 +211,79 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "auction_nft"
+        ],
+        "properties": {
+          "auction_nft": {
+            "type": "object",
+            "required": [
+              "auction_config",
+              "nft"
+            ],
+            "properties": {
+              "auction_config": {
+                "$ref": "#/definitions/AuctionConfig"
+              },
+              "nft": {
+                "$ref": "#/definitions/NFT"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "bid_nft"
+        ],
+        "properties": {
+          "bid_nft": {
+            "type": "object",
+            "required": [
+              "bid_price",
+              "nft"
+            ],
+            "properties": {
+              "bid_price": {
+                "type": "integer",
+                "format": "uint128",
+                "minimum": 0.0
+              },
+              "nft": {
+                "$ref": "#/definitions/NFT"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "terminate_auction"
+        ],
+        "properties": {
+          "terminate_auction": {
+            "type": "object",
+            "required": [
+              "nft"
+            ],
+            "properties": {
+              "nft": {
+                "$ref": "#/definitions/NFT"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -254,6 +327,57 @@
                         "type": "null"
                       }
                     ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "english_auction"
+            ],
+            "properties": {
+              "english_auction": {
+                "type": "object",
+                "required": [
+                  "end_time",
+                  "start_price"
+                ],
+                "properties": {
+                  "buyout_price": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint128",
+                    "minimum": 0.0
+                  },
+                  "end_time": {
+                    "$ref": "#/definitions/Expiration"
+                  },
+                  "start_price": {
+                    "$ref": "#/definitions/Coin"
+                  },
+                  "start_time": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "step_price": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint8",
+                    "minimum": 0.0
                   }
                 },
                 "additionalProperties": false
@@ -680,6 +804,57 @@
                 }
               },
               "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "english_auction"
+              ],
+              "properties": {
+                "english_auction": {
+                  "type": "object",
+                  "required": [
+                    "end_time",
+                    "start_price"
+                  ],
+                  "properties": {
+                    "buyout_price": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "format": "uint128",
+                      "minimum": 0.0
+                    },
+                    "end_time": {
+                      "$ref": "#/definitions/Expiration"
+                    },
+                    "start_price": {
+                      "$ref": "#/definitions/Coin"
+                    },
+                    "start_time": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Expiration"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "step_price": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "format": "uint8",
+                      "minimum": 0.0
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           ]
         },
@@ -820,6 +995,57 @@
                           "type": "null"
                         }
                       ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "english_auction"
+              ],
+              "properties": {
+                "english_auction": {
+                  "type": "object",
+                  "required": [
+                    "end_time",
+                    "start_price"
+                  ],
+                  "properties": {
+                    "buyout_price": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "format": "uint128",
+                      "minimum": 0.0
+                    },
+                    "end_time": {
+                      "$ref": "#/definitions/Expiration"
+                    },
+                    "start_price": {
+                      "$ref": "#/definitions/Coin"
+                    },
+                    "start_time": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/definitions/Expiration"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "step_price": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "format": "uint8",
+                      "minimum": 0.0
                     }
                   },
                   "additionalProperties": false
@@ -1025,23 +1251,21 @@
         "ConsiderationItem": {
           "type": "object",
           "required": [
-            "end_amount",
             "item",
-            "item_type",
             "recipient",
             "start_amount"
           ],
           "properties": {
             "end_amount": {
-              "type": "integer",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint128",
               "minimum": 0.0
             },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
             },
             "recipient": {
               "$ref": "#/definitions/Addr"
@@ -1049,6 +1273,14 @@
             "start_amount": {
               "type": "integer",
               "format": "uint128",
+              "minimum": 0.0
+            },
+            "step_amount": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint8",
               "minimum": 0.0
             }
           },
@@ -1101,14 +1333,6 @@
             }
           ]
         },
-        "ItemType": {
-          "type": "string",
-          "enum": [
-            "n_a_t_i_v_e",
-            "c_w20",
-            "c_w721"
-          ]
-        },
         "NATIVE": {
           "type": "object",
           "required": [
@@ -1148,27 +1372,11 @@
         "OfferItem": {
           "type": "object",
           "required": [
-            "end_amount",
-            "item",
-            "item_type",
-            "start_amount"
+            "item"
           ],
           "properties": {
-            "end_amount": {
-              "type": "integer",
-              "format": "uint128",
-              "minimum": 0.0
-            },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
-            },
-            "start_amount": {
-              "type": "integer",
-              "format": "uint128",
-              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -1227,6 +1435,16 @@
             "order_type": {
               "$ref": "#/definitions/OrderType"
             },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "start_time": {
               "anyOf": [
                 {
@@ -1244,7 +1462,8 @@
           "type": "string",
           "enum": [
             "o_f_f_e_r",
-            "l_i_s_t_i_n_g"
+            "l_i_s_t_i_n_g",
+            "a_u_c_t_i_o_n"
           ]
         },
         "Timestamp": {
@@ -1316,6 +1535,16 @@
         },
         "order_type": {
           "$ref": "#/definitions/OrderType"
+        },
+        "recipient": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "start_time": {
           "anyOf": [
@@ -1395,23 +1624,21 @@
         "ConsiderationItem": {
           "type": "object",
           "required": [
-            "end_amount",
             "item",
-            "item_type",
             "recipient",
             "start_amount"
           ],
           "properties": {
             "end_amount": {
-              "type": "integer",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint128",
               "minimum": 0.0
             },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
             },
             "recipient": {
               "$ref": "#/definitions/Addr"
@@ -1419,6 +1646,14 @@
             "start_amount": {
               "type": "integer",
               "format": "uint128",
+              "minimum": 0.0
+            },
+            "step_amount": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint8",
               "minimum": 0.0
             }
           },
@@ -1471,14 +1706,6 @@
             }
           ]
         },
-        "ItemType": {
-          "type": "string",
-          "enum": [
-            "n_a_t_i_v_e",
-            "c_w20",
-            "c_w721"
-          ]
-        },
         "NATIVE": {
           "type": "object",
           "required": [
@@ -1518,27 +1745,11 @@
         "OfferItem": {
           "type": "object",
           "required": [
-            "end_amount",
-            "item",
-            "item_type",
-            "start_amount"
+            "item"
           ],
           "properties": {
-            "end_amount": {
-              "type": "integer",
-              "format": "uint128",
-              "minimum": 0.0
-            },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
-            },
-            "start_amount": {
-              "type": "integer",
-              "format": "uint128",
-              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -1547,7 +1758,8 @@
           "type": "string",
           "enum": [
             "o_f_f_e_r",
-            "l_i_s_t_i_n_g"
+            "l_i_s_t_i_n_g",
+            "a_u_c_t_i_o_n"
           ]
         },
         "Timestamp": {
@@ -1646,23 +1858,21 @@
         "ConsiderationItem": {
           "type": "object",
           "required": [
-            "end_amount",
             "item",
-            "item_type",
             "recipient",
             "start_amount"
           ],
           "properties": {
             "end_amount": {
-              "type": "integer",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint128",
               "minimum": 0.0
             },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
             },
             "recipient": {
               "$ref": "#/definitions/Addr"
@@ -1670,6 +1880,14 @@
             "start_amount": {
               "type": "integer",
               "format": "uint128",
+              "minimum": 0.0
+            },
+            "step_amount": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint8",
               "minimum": 0.0
             }
           },
@@ -1722,14 +1940,6 @@
             }
           ]
         },
-        "ItemType": {
-          "type": "string",
-          "enum": [
-            "n_a_t_i_v_e",
-            "c_w20",
-            "c_w721"
-          ]
-        },
         "NATIVE": {
           "type": "object",
           "required": [
@@ -1769,27 +1979,11 @@
         "OfferItem": {
           "type": "object",
           "required": [
-            "end_amount",
-            "item",
-            "item_type",
-            "start_amount"
+            "item"
           ],
           "properties": {
-            "end_amount": {
-              "type": "integer",
-              "format": "uint128",
-              "minimum": 0.0
-            },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
-            },
-            "start_amount": {
-              "type": "integer",
-              "format": "uint128",
-              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -1848,6 +2042,16 @@
             "order_type": {
               "$ref": "#/definitions/OrderType"
             },
+            "recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "start_time": {
               "anyOf": [
                 {
@@ -1865,7 +2069,8 @@
           "type": "string",
           "enum": [
             "o_f_f_e_r",
-            "l_i_s_t_i_n_g"
+            "l_i_s_t_i_n_g",
+            "a_u_c_t_i_o_n"
           ]
         },
         "Timestamp": {
