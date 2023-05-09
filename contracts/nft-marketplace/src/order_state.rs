@@ -174,13 +174,13 @@ impl<'a> IndexList<OrderComponents> for OfferIndexes<'a> {
 pub struct AuctionIndexes<'a> {
     pub owners: MultiIndex<'a, User, OrderComponents, OrderKey>,
     pub nfts: MultiIndex<'a, (Addr, String), OrderComponents, OrderKey>,
-    pub buyer: MultiIndex<'a, User, OrderComponents, OrderKey>,
+    pub buyers: MultiIndex<'a, User, OrderComponents, OrderKey>,
 }
 
 impl<'a> IndexList<OrderComponents> for AuctionIndexes<'a> {
     // this method returns a list of all indexes
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<OrderComponents>> + '_> {
-        let v: Vec<&dyn Index<OrderComponents>> = vec![&self.owners, &self.nfts, &self.buyer];
+        let v: Vec<&dyn Index<OrderComponents>> = vec![&self.owners, &self.nfts, &self.buyers];
         Box::new(v.into_iter())
     }
 }
@@ -206,7 +206,7 @@ pub fn orders<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, OfferIndexes<'a
 pub fn auctions<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, AuctionIndexes<'a>> {
     let indexes = AuctionIndexes {
         owners: MultiIndex::new(
-            |_pk: &[u8], l: &OrderComponents| (l.order_id.0.clone()),
+            |_pk: &[u8], l: &OrderComponents| (l.offerer.clone()),
             "auctions",
             "auctions__owner_address",
         ),
@@ -215,7 +215,7 @@ pub fn auctions<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, AuctionIndexe
             "auctions",
             "auctions__nft_identifier",
         ),
-        buyer: MultiIndex::new(
+        buyers: MultiIndex::new(
             |_pk: &[u8], l: &OrderComponents| (l.consideration[0].recipient.clone()),
             "auctions",
             "auctions__buyer_address",

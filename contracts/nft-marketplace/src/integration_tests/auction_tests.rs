@@ -15,7 +15,8 @@ use cw721::Expiration as Cw721Expiration;
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 
 const TOKEN_ID_1: &str = "token1";
-// const TOKEN_ID_2: &str = "token2";
+const TOKEN_ID_2: &str = "token2";
+const TOKEN_ID_3: &str = "token3";
 
 const START_PRICE: u128 = 10000000;
 const STEP_PERCENTAGE: u8 = 5;
@@ -1333,5 +1334,151 @@ mod settle_auction {
             res.unwrap_err().source().unwrap().to_string(),
             "Custom Error val: \"Auction is not expired\""
         );
+    }
+}
+
+mod query_auction {
+    use crate::msg::AuctionsResponse;
+
+    use super::*;
+
+    #[test]
+    fn query_all_auctions_of_owner() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint the first cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_1, OWNER, cw2981_address.clone());
+
+        // mint the second cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_2, OWNER, cw2981_address.clone());
+
+        // mint the third cw2981 nft to OWNER
+        mint_nft(&mut app, TOKEN_ID_3, OWNER, cw2981_address.clone());
+
+        // approve marketplace to transfer nfts
+        approval_token(
+            &mut app,
+            OWNER,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // approve marketplace to transfer nfts
+        approval_token(
+            &mut app,
+            OWNER,
+            TOKEN_ID_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // approve marketplace to transfer nfts
+        approval_token(
+            &mut app,
+            OWNER,
+            TOKEN_ID_3,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config.clone(),
+        );
+        assert!(res.is_ok());
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_2.to_string()),
+            OWNER,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config.clone(),
+        );
+        assert!(res.is_ok());
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_3.to_string()),
+            OWNER,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // USER_1 bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        // USER_1 bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_3.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        // USER_2 bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_2.to_string()),
+            USER_2,
+            cw2981_address,
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        // query all auctions of OWNER
+        let query_msg = QueryMsg::OwnerAuctions {
+            owner: OWNER.to_string(),
+            start_after_nft: None,
+            limit: None,
+        };
+
+        let res: AuctionsResponse = app
+            .wrap()
+            .query_wasm_smart(Addr::unchecked(marketplace_address), &query_msg)
+            .unwrap();
+        // the number of auctions should be 3
+        assert_eq!(res.auctions.len(), 3);
+
+        // query all auctions of USER_1
+        let _query_msg = QueryMsg::BuyerAuctions {
+            buyer: USER_1.to_string(),
+            start_after_nft: None,
+            limit: None,
+        };
+        // the number of auctions should be 2
+        assert_eq!(res.auctions.len(), 3); // May cais query nay loi het roi
     }
 }

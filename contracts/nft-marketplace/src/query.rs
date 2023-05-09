@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Deps, Env, Order, StdResult};
 use cw_storage_plus::Bound;
 
 use crate::{
-    msg::{ListingsResponse, OffersResponse},
+    msg::{AuctionsResponse, ListingsResponse, OffersResponse},
     order_state::{order_key, OrderComponents, OrderKey, NFT},
     state::{listing_key, Listing, ListingKey, MarketplaceContract},
 };
@@ -133,5 +133,75 @@ impl MarketplaceContract<'static> {
 
         // return offers
         Ok(order)
+    }
+
+    // query all offers of a specific user
+    pub fn query_owner_auctions(
+        self,
+        deps: Deps,
+        env: Env,
+        owner: Addr,
+        start_after_nft: Option<NFT>,
+        limit: Option<u32>,
+    ) -> StdResult<AuctionsResponse> {
+        let limit = limit.unwrap_or(30).min(30) as usize;
+
+        let start: Option<Bound<OrderKey>> = start_after_nft.map(|nft| {
+            let order_key = order_key(
+                &env.contract.address,
+                &nft.contract_address,
+                &nft.token_id.unwrap(),
+            );
+            Bound::exclusive(order_key)
+        });
+
+        // load offers
+        let auctions = self
+            .auctions
+            .idx
+            .owners
+            .prefix(owner)
+            .range(deps.storage, start, None, Order::Descending)
+            .map(|item| item.map(|(_, auction)| auction))
+            .take(limit)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        // return offers
+        Ok(AuctionsResponse { auctions })
+    }
+
+    // query all offers of a specific user
+    pub fn query_buyer_auctions(
+        self,
+        deps: Deps,
+        env: Env,
+        buyer: Addr,
+        start_after_nft: Option<NFT>,
+        limit: Option<u32>,
+    ) -> StdResult<AuctionsResponse> {
+        let limit = limit.unwrap_or(30).min(30) as usize;
+
+        let start: Option<Bound<OrderKey>> = start_after_nft.map(|nft| {
+            let order_key = order_key(
+                &env.contract.address,
+                &nft.contract_address,
+                &nft.token_id.unwrap(),
+            );
+            Bound::exclusive(order_key)
+        });
+
+        // load offers
+        let auctions = self
+            .auctions
+            .idx
+            .buyers
+            .prefix(buyer)
+            .range(deps.storage, start, None, Order::Descending)
+            .map(|item| item.map(|(_, order)| order))
+            .take(limit)
+            .collect::<StdResult<Vec<_>>>()?;
+
+        // return offers
+        Ok(AuctionsResponse { auctions })
     }
 }

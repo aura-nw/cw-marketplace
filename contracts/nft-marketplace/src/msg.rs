@@ -116,6 +116,20 @@ pub enum QueryMsg {
         contract_address: String,
         token_id: String,
     },
+    // get all auctions of owner
+    #[returns(AuctionsResponse)]
+    OwnerAuctions {
+        owner: String,
+        start_after_nft: Option<NFT>,
+        limit: Option<u32>,
+    },
+    // get all auctions of a buyer
+    #[returns(AuctionsResponse)]
+    BuyerAuctions {
+        buyer: String,
+        start_after_nft: Option<NFT>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]

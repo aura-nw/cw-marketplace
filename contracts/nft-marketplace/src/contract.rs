@@ -176,5 +176,27 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&contract_address)?,
             token_id,
         )?),
+        QueryMsg::OwnerAuctions {
+            owner,
+            start_after_nft,
+            limit,
+        } => to_binary(&contract().query_owner_auctions(
+            deps,
+            env,
+            api.addr_validate(&owner)?,
+            start_after_nft,
+            limit,
+        )?),
+        QueryMsg::BuyerAuctions {
+            buyer,
+            start_after_nft,
+            limit,
+        } => to_binary(&contract().query_buyer_auctions(
+            deps,
+            env,
+            api.addr_validate(&buyer)?,
+            start_after_nft,
+            limit,
+        )?),
     }
 }
