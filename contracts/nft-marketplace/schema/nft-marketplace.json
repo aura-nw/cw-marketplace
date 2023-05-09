@@ -211,6 +211,79 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "auction_nft"
+        ],
+        "properties": {
+          "auction_nft": {
+            "type": "object",
+            "required": [
+              "auction_config",
+              "nft"
+            ],
+            "properties": {
+              "auction_config": {
+                "$ref": "#/definitions/AuctionConfigInput"
+              },
+              "nft": {
+                "$ref": "#/definitions/NFT"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "bid_auction"
+        ],
+        "properties": {
+          "bid_auction": {
+            "type": "object",
+            "required": [
+              "bid_price",
+              "nft"
+            ],
+            "properties": {
+              "bid_price": {
+                "type": "integer",
+                "format": "uint128",
+                "minimum": 0.0
+              },
+              "nft": {
+                "$ref": "#/definitions/NFT"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "settle_auction"
+        ],
+        "properties": {
+          "settle_auction": {
+            "type": "object",
+            "required": [
+              "nft"
+            ],
+            "properties": {
+              "nft": {
+                "$ref": "#/definitions/NFT"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -254,6 +327,102 @@
                         "type": "null"
                       }
                     ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "AuctionConfigInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "fixed_price"
+            ],
+            "properties": {
+              "fixed_price": {
+                "type": "object",
+                "required": [
+                  "price"
+                ],
+                "properties": {
+                  "end_time": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "price": {
+                    "$ref": "#/definitions/Coin"
+                  },
+                  "start_time": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "english_auction"
+            ],
+            "properties": {
+              "english_auction": {
+                "type": "object",
+                "required": [
+                  "end_time",
+                  "start_price"
+                ],
+                "properties": {
+                  "buyout_price": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint128",
+                    "minimum": 0.0
+                  },
+                  "end_time": {
+                    "$ref": "#/definitions/Expiration"
+                  },
+                  "start_price": {
+                    "$ref": "#/definitions/Coin"
+                  },
+                  "start_time": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/Expiration"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "step_percentage": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint8",
+                    "minimum": 0.0
                   }
                 },
                 "additionalProperties": false

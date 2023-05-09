@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, BlockInfo};
 use cw721::Expiration;
-use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex};
 
 pub type Nft = (Addr, String);
 pub type User = Addr;
@@ -148,6 +148,16 @@ pub struct OrderComponents {
     pub end_time: Option<Expiration>,
 }
 
+impl OrderComponents {
+    // expired is when a listing has passed the end_time
+    pub fn is_expired(&self, block_info: &BlockInfo) -> bool {
+        match self.end_time {
+            Some(end_time) => end_time.is_expired(block_info),
+            None => false,
+        }
+    }
+}
+
 pub struct OfferIndexes<'a> {
     pub users: MultiIndex<'a, User, OrderComponents, OrderKey>,
     pub nfts: MultiIndex<'a, (Addr, String), OrderComponents, OrderKey>,
@@ -157,6 +167,20 @@ impl<'a> IndexList<OrderComponents> for OfferIndexes<'a> {
     // this method returns a list of all indexes
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<OrderComponents>> + '_> {
         let v: Vec<&dyn Index<OrderComponents>> = vec![&self.users, &self.nfts];
+        Box::new(v.into_iter())
+    }
+}
+
+pub struct AuctionIndexes<'a> {
+    pub owners: MultiIndex<'a, User, OrderComponents, OrderKey>,
+    pub nfts: MultiIndex<'a, (Addr, String), OrderComponents, OrderKey>,
+    pub buyer: MultiIndex<'a, User, OrderComponents, OrderKey>,
+}
+
+impl<'a> IndexList<OrderComponents> for AuctionIndexes<'a> {
+    // this method returns a list of all indexes
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<OrderComponents>> + '_> {
+        let v: Vec<&dyn Index<OrderComponents>> = vec![&self.owners, &self.nfts, &self.buyer];
         Box::new(v.into_iter())
     }
 }
@@ -177,3 +201,29 @@ pub fn orders<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, OfferIndexes<'a
     };
     IndexedMap::new("orders", indexes)
 }
+
+// helper function create a IndexedMap for listings
+pub fn auctions<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, AuctionIndexes<'a>> {
+    let indexes = AuctionIndexes {
+        owners: MultiIndex::new(
+            |_pk: &[u8], l: &OrderComponents| (l.order_id.0.clone()),
+            "auctions",
+            "auctions__owner_address",
+        ),
+        nfts: MultiIndex::new(
+            |_pk: &[u8], l: &OrderComponents| (l.order_id.1.clone(), l.order_id.2.clone()),
+            "auctions",
+            "auctions__nft_identifier",
+        ),
+        buyer: MultiIndex::new(
+            |_pk: &[u8], l: &OrderComponents| (l.consideration[0].recipient.clone()),
+            "auctions",
+            "auctions__buyer_address",
+        ),
+    };
+    IndexedMap::new("auctions", indexes)
+}
+
+// the auction config mapping
+pub const ENGLISH_AUCTION_STEP_PERCENTAGES: Map<OrderKey, u8> =
+    Map::new("english_auction_step_percentages");

@@ -93,6 +93,16 @@ pub fn execute(
         ExecuteMsg::EditVauraToken { token_address } => {
             contract().execute_edit_vaura_token(deps, _env, info, token_address)
         }
+        ExecuteMsg::AuctionNft {
+            nft,
+            auction_config,
+        } => contract().execute_auction_nft(deps, _env, info, nft, auction_config),
+        ExecuteMsg::BidAuction { nft, bid_price } => {
+            contract().execute_bid_auction(deps, _env, info, nft, bid_price)
+        }
+        ExecuteMsg::SettleAuction { nft } => {
+            contract().execute_settle_auction(deps, _env, info, nft)
+        }
     }
 }
 

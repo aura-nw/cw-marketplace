@@ -4,7 +4,7 @@ use cw721::Expiration;
 
 use crate::{
     order_state::{OrderComponents, NFT},
-    state::{AuctionConfig, Listing},
+    state::{AuctionConfig, AuctionConfigInput, Listing},
 };
 
 #[cw_serde]
@@ -49,6 +49,20 @@ pub enum ExecuteMsg {
     // edit contract address of vaura token
     EditVauraToken {
         token_address: String,
+    },
+    // user auction nft
+    AuctionNft {
+        nft: NFT,
+        auction_config: AuctionConfigInput,
+    },
+    // user bid nft
+    BidAuction {
+        nft: NFT,
+        bid_price: u128,
+    },
+    // terminate auction
+    SettleAuction {
+        nft: NFT,
     },
 }
 
