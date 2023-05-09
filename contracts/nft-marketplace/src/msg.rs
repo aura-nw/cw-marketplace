@@ -110,6 +110,12 @@ pub enum QueryMsg {
         start_after_nft: Option<NFT>,
         limit: Option<u32>,
     },
+    // get auction of a nft
+    #[returns(OrderComponents)]
+    NftAuction {
+        contract_address: String,
+        token_id: String,
+    },
 }
 
 #[cw_serde]
@@ -125,4 +131,9 @@ pub struct ValidateResponse {
 #[cw_serde]
 pub struct OffersResponse {
     pub offers: Vec<OrderComponents>,
+}
+
+#[cw_serde]
+pub struct AuctionsResponse {
+    pub auctions: Vec<OrderComponents>,
 }

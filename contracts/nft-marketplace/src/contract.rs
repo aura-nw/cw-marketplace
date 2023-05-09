@@ -112,7 +112,7 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
     match msg {
         // get config
@@ -166,6 +166,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&offerer)?,
             start_after_nft,
             limit,
+        )?),
+        QueryMsg::NftAuction {
+            contract_address,
+            token_id,
+        } => to_binary(&contract().query_nft_auction(
+            deps,
+            env,
+            api.addr_validate(&contract_address)?,
+            token_id,
         )?),
     }
 }

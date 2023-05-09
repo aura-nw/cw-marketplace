@@ -8,6 +8,7 @@ use anyhow::Result as AnyResult;
 use cosmwasm_std::{coin, Addr, Uint128};
 use cw_multi_test::{App, AppResponse, Executor};
 
+use crate::msg::QueryMsg;
 use crate::state::AuctionConfigInput;
 use cw2981_royalties::{Metadata, MintMsg, QueryMsg as Cw721QueryMsg};
 use cw721::Expiration as Cw721Expiration;
@@ -386,7 +387,226 @@ mod create_auction {
 }
 
 mod bid_auction {
+    use crate::order_state::OrderComponents;
+
     use super::*;
+
+    #[test]
+    fn cannot_bid_your_own_auction() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address,
+            marketplace_address,
+            10000u128,
+            None,
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Custom Error val: \"Cannot bid on your own auction\""
+        );
+    }
+
+    #[test]
+    fn cannot_bid_when_auction_expired() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(1001);
+        app.set_block(block_info);
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address,
+            marketplace_address,
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Custom Error val: \"Auction is expired\""
+        );
+    }
+
+    #[test]
+    fn the_end_time_will_be_increased_when_bidding_in_last_10_minutes() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // first end_time
+        let first_end_time = app.block_info().time.plus_seconds(1000);
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(first_end_time),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(399);
+        app.set_block(block_info);
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        // query auction info of nft
+        let query_msg = QueryMsg::NftAuction {
+            token_id: TOKEN_ID_1.to_string(),
+            contract_address: cw2981_address.clone(),
+        };
+
+        // get auction of nft
+        let res: OrderComponents = app
+            .wrap()
+            .query_wasm_smart(Addr::unchecked(&marketplace_address), &query_msg)
+            .unwrap();
+
+        assert_eq!(res.end_time, Some(Cw721Expiration::AtTime(first_end_time)));
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(1);
+        app.set_block(block_info);
+
+        // second end_time
+        let second_end_time = app.block_info().time.plus_seconds(600);
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE * 105 / 100,
+            Some(START_PRICE * 105 / 100),
+        );
+        assert!(res.is_ok());
+
+        // query auction info of nft
+        let query_msg = QueryMsg::NftAuction {
+            token_id: TOKEN_ID_1.to_string(),
+            contract_address: cw2981_address,
+        };
+
+        // get auction of nft
+        let res: OrderComponents = app
+            .wrap()
+            .query_wasm_smart(Addr::unchecked(&marketplace_address), &query_msg)
+            .unwrap();
+
+        assert_eq!(res.end_time, Some(Cw721Expiration::AtTime(second_end_time)));
+    }
 
     #[test]
     fn user_cannot_bid_auction_because_not_enought_funds() {
@@ -656,20 +876,6 @@ mod settle_auction {
         // mint a cw2981 nft to OWNER
         mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
 
-        // // transfer nft to OWNER
-        // // prepare msg
-        // let msg: Cw721ExecuteMsg<Metadata, Metadata> = Cw721ExecuteMsg::TransferNft {
-        //     recipient: OWNER.to_string(),
-        //     token_id: TOKEN_ID_1.to_string(),
-        // };
-        // let res = app.execute_contract(
-        //     Addr::unchecked(USER_2.to_string()),
-        //     Addr::unchecked(cw2981_address.clone()),
-        //     &msg,
-        //     &[],
-        // );
-        // assert!(res.is_ok());
-
         // approve marketplace to transfer nft
         approval_token(
             &mut app,
@@ -770,6 +976,362 @@ mod settle_auction {
         assert_eq!(
             _user_2_balance_after.amount.u128(),
             _user_2_balance_before.amount.u128() + (START_PRICE * 80 / 100)
+        );
+    }
+
+    #[test]
+    fn last_bidder_can_settle_auction() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of USER_1
+        let _user_1_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_1), NATIVE_DENOM)
+            .unwrap();
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(1001);
+        app.set_block(block_info);
+
+        // get the balance of OWNER
+        let _owner_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(OWNER), NATIVE_DENOM)
+            .unwrap();
+        // get the balance of USER_2
+        let _user_2_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_2), NATIVE_DENOM)
+            .unwrap();
+
+        // settle auction
+        let res = settle_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of OWNER
+        let _owner_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(OWNER), NATIVE_DENOM)
+            .unwrap();
+        // get the balance of USER_1
+        let _user_1_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_1), NATIVE_DENOM)
+            .unwrap();
+        // get the balance of USER_2
+        let _user_2_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_2), NATIVE_DENOM)
+            .unwrap();
+
+        assert_eq!(
+            _owner_balance_after.amount.u128(),
+            _owner_balance_before.amount.u128() + (START_PRICE * 20 / 100)
+        );
+
+        assert_eq!(
+            _user_1_balance_after.amount.u128(),
+            _user_1_balance_before.amount.u128() - START_PRICE
+        );
+
+        assert_eq!(
+            _user_2_balance_after.amount.u128(),
+            _user_2_balance_before.amount.u128() + (START_PRICE * 80 / 100)
+        );
+
+        // check the owner of the token
+        let res: cw721::OwnerOfResponse = app
+            .wrap()
+            .query_wasm_smart(
+                Addr::unchecked(cw2981_address),
+                &Cw721QueryMsg::OwnerOf {
+                    token_id: TOKEN_ID_1.to_string(),
+                    include_expired: None,
+                },
+            )
+            .unwrap();
+        // it should be USER_1
+        assert_eq!(res.owner, USER_1.to_string());
+    }
+
+    #[test]
+    fn owner_receive_his_nft_if_no_bid() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(1001);
+        app.set_block(block_info);
+
+        // get the balance of USER_2
+        let _user_2_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_2), NATIVE_DENOM)
+            .unwrap();
+
+        // settle auction
+        let res = settle_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of USER_2
+        let _user_2_balance_after = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_2), NATIVE_DENOM)
+            .unwrap();
+
+        assert_eq!(_user_2_balance_before, _user_2_balance_after);
+
+        // check the owner of the token
+        let res: cw721::OwnerOfResponse = app
+            .wrap()
+            .query_wasm_smart(
+                Addr::unchecked(cw2981_address),
+                &Cw721QueryMsg::OwnerOf {
+                    token_id: TOKEN_ID_1.to_string(),
+                    include_expired: None,
+                },
+            )
+            .unwrap();
+        // it should be USER_2
+        assert_eq!(res.owner, USER_2.to_string());
+    }
+
+    #[test]
+    fn cannot_settle_auction_because_unauthorized() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of USER_1
+        let _user_1_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_1), NATIVE_DENOM)
+            .unwrap();
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(1001);
+        app.set_block(block_info);
+
+        // settle auction
+        let res = settle_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            OWNER,
+            cw2981_address,
+            marketplace_address,
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Unauthorized"
+        );
+    }
+
+    #[test]
+    fn cannot_settle_auction_because_auction_not_expired() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+
+        // mint a cw2981 nft to USER_2
+        mint_nft(&mut app, TOKEN_ID_1, USER_2, cw2981_address.clone());
+
+        // approve marketplace to transfer nft
+        approval_token(
+            &mut app,
+            USER_2,
+            TOKEN_ID_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+
+        // create auction config
+        let auction_config = AuctionConfigInput::EnglishAuction {
+            start_price: coin(START_PRICE, NATIVE_DENOM),
+            step_percentage: Some(STEP_PERCENTAGE),
+            buyout_price: None,
+            start_time: None,
+            end_time: Cw721Expiration::AtTime(app.block_info().time.plus_seconds(1000)),
+        };
+
+        let res = create_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_2,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            auction_config,
+        );
+        assert!(res.is_ok());
+
+        // get the balance of USER_1
+        let _user_1_balance_before = app
+            .wrap()
+            .query_balance(Addr::unchecked(USER_1), NATIVE_DENOM)
+            .unwrap();
+
+        // bid auction
+        let res = bid_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+            START_PRICE,
+            Some(START_PRICE),
+        );
+        assert!(res.is_ok());
+
+        let mut block_info = app.block_info();
+        block_info.time = block_info.time.plus_seconds(999);
+        app.set_block(block_info);
+
+        // settle auction
+        let res = settle_auction(
+            &mut app,
+            Some(TOKEN_ID_1.to_string()),
+            USER_1,
+            cw2981_address,
+            marketplace_address,
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Custom Error val: \"Auction is not expired\""
         );
     }
 }

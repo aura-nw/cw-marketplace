@@ -896,7 +896,7 @@ impl MarketplaceContract<'static> {
         // nft.token_id must be exist
         if nft.token_id.is_none() {
             return Err(ContractError::CustomError {
-                val: ("Collection auction is not supported".to_string()),
+                val: ("Token id is required".to_string()),
             });
         }
 
@@ -1026,7 +1026,7 @@ impl MarketplaceContract<'static> {
         // nft.token_id must be exist
         if nft.token_id.is_none() {
             return Err(ContractError::CustomError {
-                val: ("Collection auction is not supported".to_string()),
+                val: ("Token id is required".to_string()),
             });
         }
 
@@ -1042,9 +1042,7 @@ impl MarketplaceContract<'static> {
 
         // only the offerer or recipient can terminate the auction
         if info.sender != order.offerer && info.sender != order.consideration[0].recipient.clone() {
-            return Err(ContractError::CustomError {
-                val: ("Unauthorized".to_string()),
-            });
+            return Err(ContractError::Unauthorized {});
         }
 
         // check if the order is not expired

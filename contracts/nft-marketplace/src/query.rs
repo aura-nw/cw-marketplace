@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, Order, StdResult};
+use cosmwasm_std::{Addr, Deps, Env, Order, StdResult};
 use cw_storage_plus::Bound;
 
 use crate::{
@@ -115,5 +115,23 @@ impl MarketplaceContract<'static> {
 
         // return offers
         Ok(OffersResponse { offers })
+    }
+
+    // query all auctions of a specific nft
+    pub fn query_nft_auction(
+        self,
+        deps: Deps,
+        env: Env,
+        contract_address: Addr,
+        token_id: String,
+    ) -> StdResult<OrderComponents> {
+        // create order key based on the offerer address, nft.contract_address and nft.token_id
+        let order_key = order_key(&env.contract.address, &contract_address, &token_id);
+
+        // get order
+        let order = self.auctions.load(deps.storage, order_key)?;
+
+        // return offers
+        Ok(order)
     }
 }
