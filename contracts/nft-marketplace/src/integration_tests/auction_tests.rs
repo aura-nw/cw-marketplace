@@ -1459,7 +1459,7 @@ mod query_auction {
         assert!(res.is_ok());
 
         // query all auctions of OWNER
-        let query_msg = QueryMsg::OwnerAuctions {
+        let query_owner_msg = QueryMsg::OwnerAuctions {
             owner: OWNER.to_string(),
             start_after_nft: None,
             limit: None,
@@ -1467,18 +1467,43 @@ mod query_auction {
 
         let res: AuctionsResponse = app
             .wrap()
-            .query_wasm_smart(Addr::unchecked(marketplace_address), &query_msg)
+            .query_wasm_smart(
+                Addr::unchecked(marketplace_address.clone()),
+                &query_owner_msg,
+            )
             .unwrap();
         // the number of auctions should be 3
         assert_eq!(res.auctions.len(), 3);
 
         // query all auctions of USER_1
-        let _query_msg = QueryMsg::BuyerAuctions {
+        let query_user_1_msg = QueryMsg::BuyerAuctions {
             buyer: USER_1.to_string(),
             start_after_nft: None,
             limit: None,
         };
+
+        let res: AuctionsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                Addr::unchecked(marketplace_address.clone()),
+                &query_user_1_msg,
+            )
+            .unwrap();
         // the number of auctions should be 2
-        assert_eq!(res.auctions.len(), 3); // May cais query nay loi het roi
+        assert_eq!(res.auctions.len(), 2);
+
+        // query all auctions of USER_2
+        let query_user_2_msg = QueryMsg::BuyerAuctions {
+            buyer: USER_2.to_string(),
+            start_after_nft: None,
+            limit: None,
+        };
+
+        let res: AuctionsResponse = app
+            .wrap()
+            .query_wasm_smart(Addr::unchecked(marketplace_address), &query_user_2_msg)
+            .unwrap();
+        // the number of auctions should be 1
+        assert_eq!(res.auctions.len(), 1);
     }
 }

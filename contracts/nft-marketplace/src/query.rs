@@ -135,7 +135,7 @@ impl MarketplaceContract<'static> {
         Ok(order)
     }
 
-    // query all offers of a specific user
+    // query all auctions of a specific owner
     pub fn query_owner_auctions(
         self,
         deps: Deps,
@@ -155,7 +155,7 @@ impl MarketplaceContract<'static> {
             Bound::exclusive(order_key)
         });
 
-        // load offers
+        // load auctions
         let auctions = self
             .auctions
             .idx
@@ -166,11 +166,11 @@ impl MarketplaceContract<'static> {
             .take(limit)
             .collect::<StdResult<Vec<_>>>()?;
 
-        // return offers
+        // return auctions
         Ok(AuctionsResponse { auctions })
     }
 
-    // query all offers of a specific user
+    // query all auctions of a specific buyer
     pub fn query_buyer_auctions(
         self,
         deps: Deps,
@@ -190,7 +190,7 @@ impl MarketplaceContract<'static> {
             Bound::exclusive(order_key)
         });
 
-        // load offers
+        // load auctions
         let auctions = self
             .auctions
             .idx
@@ -201,7 +201,7 @@ impl MarketplaceContract<'static> {
             .take(limit)
             .collect::<StdResult<Vec<_>>>()?;
 
-        // return offers
+        // return auctions
         Ok(AuctionsResponse { auctions })
     }
 }
