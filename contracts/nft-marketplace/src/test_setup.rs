@@ -125,7 +125,7 @@ pub mod env {
     //        (app, contract_addr, contract_code_id)
     //    }
     // *********************************************************
-    pub fn instantiate_contracts() -> (App, Vec<ContractInfo>) {
+    pub fn instantiate_contracts(is_completed: bool) -> (App, Vec<ContractInfo>) {
         // Create a new app instance
         let mut app = mock_app();
 
@@ -250,18 +250,19 @@ pub mod env {
             contract_code_id,
         });
 
-        // set the vaura token address in the marketplace contract
-        let set_vaura_token_msg = MarketPlaceExecuteMsg::EditVauraToken {
-            token_address: contract_addr.to_string(),
-        };
-
-        let res = app.execute_contract(
-            Addr::unchecked(OWNER),
-            Addr::unchecked(marketplace_contract_addr),
-            &set_vaura_token_msg,
-            &[],
-        );
-        assert!(res.is_ok());
+        if is_completed {
+            // set the vaura token address in the marketplace contract
+            let set_vaura_token_msg = MarketPlaceExecuteMsg::EditVauraToken {
+                token_address: contract_addr.to_string(),
+            };
+            let res = app.execute_contract(
+                Addr::unchecked(OWNER),
+                Addr::unchecked(marketplace_contract_addr),
+                &set_vaura_token_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+        }
 
         // return the app instance, the addresses and code IDs of all contracts
         (app, contract_info_vec)
