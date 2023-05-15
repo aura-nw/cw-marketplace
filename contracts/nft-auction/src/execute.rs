@@ -1,5 +1,5 @@
 use crate::state::{
-    consideration_item, contract, offer_item, order_key, Asset, AuctionConfigInput, ItemType,
+    consideration_item, contract, offer_item, order_key, Asset, AuctionConfigInput,
     OrderComponents, PaymentAsset, ENGLISH_AUCTION_STEP_PERCENTAGES, NATIVE, NFT,
 };
 use crate::ContractError;
@@ -174,7 +174,10 @@ pub fn execute_auction_nft(
             let start_time = start_time
                 .unwrap_or_else(|| Cw721Expiration::AtTime(env.block.time.plus_seconds(1)));
             // check if the start_time is greater than the current time
-            if start_time.is_expired(&env.block) || start_time >= end_time {
+            if start_time.is_expired(&env.block)
+                || end_time.eq(&Cw721Expiration::Never {})
+                || start_time >= end_time
+            {
                 return Err(ContractError::CustomError {
                     val: ("Time config invalid".to_string()),
                 });
@@ -218,18 +221,17 @@ pub fn execute_auction_nft(
 
                     // create offer item based on the nft
                     let offer_item = offer_item(
-                        &ItemType::CW721 {},
                         &Asset::Nft(NFT {
                             contract_address: nft.contract_address.clone(),
                             token_id: Some(token_id.clone()),
                         }),
                         &1u128,
                         &1u128,
+                        &info.sender,
                     );
 
                     // create consideration item based on the auction config
                     let consideration_item = consideration_item(
-                        &ItemType::NATIVE {},
                         &Asset::Native(NATIVE {
                             denom: start_price.denom,
                             amount: start_price.amount.into(),
@@ -246,11 +248,10 @@ pub fn execute_auction_nft(
                     // create order
                     let order = OrderComponents {
                         order_id: order_key.clone(),
-                        offerer: info.sender.clone(),
                         offer: vec![offer_item],
                         consideration: vec![consideration_item],
-                        start_time: Some(start_time),
-                        end_time: Some(end_time),
+                        start_time,
+                        end_time,
                     };
 
                     // store order
@@ -288,9 +289,6 @@ pub fn execute_auction_nft(
                 }),
             }
         }
-        _ => Err(ContractError::CustomError {
-            val: ("Invalid auction config".to_string()),
-        }),
     }
 }
 
@@ -319,7 +317,7 @@ pub fn execute_bid_auction(
     let order = contract().auctions.load(deps.storage, order_key.clone())?;
 
     // the sender must be different than the offerer
-    if info.sender == order.offerer {
+    if info.sender == order.offer[0].offerer {
         return Err(ContractError::CustomError {
             val: ("Cannot bid on your own auction".to_string()),
         });
@@ -355,7 +353,7 @@ pub fn execute_bid_auction(
             // the bid_price must be greater than the current_price + step_price
             // and we must return the previous bid_price to the previous bidder
             let previous_bidder = order.consideration[0].recipient.clone();
-            if previous_bidder != order.offerer {
+            if previous_bidder != order.offer[0].offerer {
                 // check if the bid_price is greater than the current_price + step_price
                 let step_price = Uint128::from(current_price.amount)
                     * Decimal::percent(
@@ -400,11 +398,9 @@ pub fn execute_bid_auction(
             // if the remaining time is less than 10 minutes, extend the end_time by 10 minutes
             if new_order
                 .end_time
-                .unwrap()
                 .le(&Cw721Expiration::AtTime(env.block.time.plus_seconds(600)))
             {
-                new_order.end_time =
-                    Some(Cw721Expiration::AtTime(env.block.time.plus_seconds(600)));
+                new_order.end_time = Cw721Expiration::AtTime(env.block.time.plus_seconds(600));
             }
 
             // save order
@@ -450,12 +446,14 @@ pub fn execute_settle_auction(
     let order = contract().auctions.load(deps.storage, order_key.clone())?;
 
     // only the offerer or recipient can terminate the auction
-    if info.sender != order.offerer && info.sender != order.consideration[0].recipient.clone() {
+    if info.sender != order.offer[0].offerer
+        && info.sender != order.consideration[0].recipient.clone()
+    {
         return Err(ContractError::Unauthorized {});
     }
 
     // check if the order is not expired
-    if !order.end_time.unwrap().is_expired(&env.block) {
+    if !order.is_expired(&env.block) {
         return Err(ContractError::CustomError {
             val: ("Auction is not expired".to_string()),
         });
@@ -475,7 +473,7 @@ pub fn execute_settle_auction(
     res = res.add_message(transfer_nft_msg);
 
     // if the auction has no bid, stop the function here
-    if order.consideration[0].recipient == order.offerer {
+    if order.consideration[0].recipient == order.offer[0].offerer {
         // delete order
         contract()
             .auctions
@@ -506,7 +504,7 @@ pub fn execute_settle_auction(
                 nft.token_id.as_ref().unwrap(),
                 payment,
                 &env.contract.address,
-                &order.offerer,
+                &order.offer[0].offerer,
             );
 
             // loop through all payment messages and add item to response to execute

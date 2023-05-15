@@ -8,21 +8,9 @@ pub struct Config {
     pub owner: Addr,
 }
 
-// #[cw_serde]
-// pub struct AuctionContract {
-//     pub contract_address: Addr,
-//     pub code_id: u32,
-//     pub name: String,
-// }
-
 // New enum data structure for AuctionConfig input only
 #[cw_serde]
 pub enum AuctionConfigInput {
-    FixedPrice {
-        price: Coin,
-        start_time: Option<Expiration>, // we use expiration for convinience
-        end_time: Option<Expiration>,   // it's required that start_time < end_time
-    },
     EnglishAuction {
         start_price: Coin,           // require start_price to determine the denom
         step_percentage: Option<u8>, // step_percentage is a percentage of the current price
@@ -30,13 +18,6 @@ pub enum AuctionConfigInput {
         start_time: Option<Expiration>,
         end_time: Expiration,
     },
-}
-
-#[cw_serde]
-pub struct FixedPrice {
-    price: Coin,
-    start_time: Option<Expiration>, // we use expiration for convinience
-    end_time: Option<Expiration>,   // it's required that start_time < end_time
 }
 
 #[cw_serde]
@@ -105,37 +86,24 @@ impl From<Asset> for PaymentAsset {
 }
 
 #[cw_serde]
-pub enum ItemType {
-    NATIVE,
-    CW20,
-    CW721,
-}
-
-#[cw_serde]
-pub struct OfferItem {
-    pub item_type: ItemType,
+pub struct Offer {
     pub item: Asset,
     pub start_amount: u128,
     pub end_amount: u128,
+    pub offerer: Addr,
 }
 
-pub fn offer_item(
-    item_type: &ItemType,
-    item: &Asset,
-    start_amount: &u128,
-    end_amount: &u128,
-) -> OfferItem {
-    OfferItem {
-        item_type: item_type.clone(),
+pub fn offer_item(item: &Asset, start_amount: &u128, end_amount: &u128, offerer: &Addr) -> Offer {
+    Offer {
         item: item.clone(),
         start_amount: *start_amount,
         end_amount: *end_amount,
+        offerer: offerer.clone(),
     }
 }
 
 #[cw_serde]
-pub struct ConsiderationItem {
-    pub item_type: ItemType,
+pub struct Consideration {
     pub item: Asset,
     pub start_amount: u128,
     pub end_amount: u128,
@@ -143,14 +111,12 @@ pub struct ConsiderationItem {
 }
 
 pub fn consideration_item(
-    item_type: &ItemType,
     item: &Asset,
     start_amount: &u128,
     end_amount: &u128,
     recipient: &Addr,
-) -> ConsiderationItem {
-    ConsiderationItem {
-        item_type: item_type.clone(),
+) -> Consideration {
+    Consideration {
         item: item.clone(),
         start_amount: *start_amount,
         end_amount: *end_amount,
@@ -173,20 +139,16 @@ pub fn order_key(user_address: &Addr, contract_address: &Addr, token_id: &str) -
 #[cw_serde]
 pub struct OrderComponents {
     pub order_id: OrderKey,
-    pub offerer: User,
-    pub offer: Vec<OfferItem>,
-    pub consideration: Vec<ConsiderationItem>,
-    pub start_time: Option<Expiration>,
-    pub end_time: Option<Expiration>,
+    pub offer: Vec<Offer>,
+    pub consideration: Vec<Consideration>,
+    pub start_time: Expiration,
+    pub end_time: Expiration,
 }
 
 impl OrderComponents {
     // expired is when a listing has passed the end_time
     pub fn is_expired(&self, block_info: &BlockInfo) -> bool {
-        match self.end_time {
-            Some(end_time) => end_time.is_expired(block_info),
-            None => false,
-        }
+        self.end_time.is_expired(block_info)
     }
 }
 
@@ -208,7 +170,7 @@ impl<'a> IndexList<OrderComponents> for AuctionIndexes<'a> {
 pub fn auctions<'a>() -> IndexedMap<'a, OrderKey, OrderComponents, AuctionIndexes<'a>> {
     let indexes = AuctionIndexes {
         owners: MultiIndex::new(
-            |_pk: &[u8], l: &OrderComponents| (l.offerer.clone()),
+            |_pk: &[u8], l: &OrderComponents| (l.offer[0].offerer.clone()),
             "auctions",
             "auctions__owner_address",
         ),

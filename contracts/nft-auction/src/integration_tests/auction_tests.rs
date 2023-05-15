@@ -295,46 +295,6 @@ mod create_auction {
     }
 
     #[test]
-    fn owner_cannot_auction_nft_beccause_config_invalid() {
-        // get integration test app and contracts
-        let (mut app, contracts) = instantiate_contracts();
-        let cw2981_address = contracts[0].contract_addr.clone();
-        let marketplace_address = contracts[1].contract_addr.clone();
-
-        // mint a cw2981 nft to OWNER
-        mint_nft(&mut app, TOKEN_ID_1, OWNER, cw2981_address.clone());
-
-        // approve marketplace to transfer nft
-        approval_token(
-            &mut app,
-            OWNER,
-            TOKEN_ID_1,
-            cw2981_address.clone(),
-            marketplace_address.clone(),
-        );
-
-        // create auction config
-        let auction_config = AuctionConfigInput::FixedPrice {
-            price: coin(START_PRICE, NATIVE_DENOM),
-            start_time: None,
-            end_time: None,
-        };
-
-        let res = create_auction(
-            &mut app,
-            None,
-            USER_1,
-            cw2981_address,
-            marketplace_address,
-            auction_config,
-        );
-        assert_eq!(
-            res.unwrap_err().source().unwrap().to_string(),
-            "Custom Error val: \"Invalid auction config\""
-        );
-    }
-
-    #[test]
     fn owner_can_auction_nft() {
         // get integration test app and contracts
         let (mut app, contracts) = instantiate_contracts();
@@ -570,7 +530,7 @@ mod bid_auction {
             .query_wasm_smart(Addr::unchecked(&marketplace_address), &query_msg)
             .unwrap();
 
-        assert_eq!(res.end_time, Some(Cw721Expiration::AtTime(first_end_time)));
+        assert_eq!(res.end_time, Cw721Expiration::AtTime(first_end_time));
 
         let mut block_info = app.block_info();
         block_info.time = block_info.time.plus_seconds(1);
@@ -603,7 +563,7 @@ mod bid_auction {
             .query_wasm_smart(Addr::unchecked(&marketplace_address), &query_msg)
             .unwrap();
 
-        assert_eq!(res.end_time, Some(Cw721Expiration::AtTime(second_end_time)));
+        assert_eq!(res.end_time, Cw721Expiration::AtTime(second_end_time));
     }
 
     #[test]
