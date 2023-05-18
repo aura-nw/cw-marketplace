@@ -10,7 +10,7 @@ use crate::query::{query_buyer_auctions, query_nft_auction, query_owner_auctions
 use crate::state::{Config, CONFIG};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:nft-marketplace";
+const CONTRACT_NAME: &str = "crates.io:nft-auction";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -20,11 +20,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    // the default value of vaura_address is equal to "aura0" and MUST BE SET before offer nft
     let conf = Config { owner: msg.owner };
-    CONFIG.save(deps.storage, &conf)?;
 
-    // auctions = auctions();
+    CONFIG.save(deps.storage, &conf)?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 

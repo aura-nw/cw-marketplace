@@ -110,47 +110,6 @@
           {
             "type": "object",
             "required": [
-              "fixed_price"
-            ],
-            "properties": {
-              "fixed_price": {
-                "type": "object",
-                "required": [
-                  "price"
-                ],
-                "properties": {
-                  "end_time": {
-                    "anyOf": [
-                      {
-                        "$ref": "#/definitions/Expiration"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "price": {
-                    "$ref": "#/definitions/Coin"
-                  },
-                  "start_time": {
-                    "anyOf": [
-                      {
-                        "$ref": "#/definitions/Expiration"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
               "english_auction"
             ],
             "properties": {
@@ -514,12 +473,11 @@
           },
           "additionalProperties": false
         },
-        "ConsiderationItem": {
+        "Consideration": {
           "type": "object",
           "required": [
             "end_amount",
             "item",
-            "item_type",
             "recipient",
             "start_amount"
           ],
@@ -531,9 +489,6 @@
             },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
             },
             "recipient": {
               "$ref": "#/definitions/Addr"
@@ -593,14 +548,6 @@
             }
           ]
         },
-        "ItemType": {
-          "type": "string",
-          "enum": [
-            "n_a_t_i_v_e",
-            "c_w20",
-            "c_w721"
-          ]
-        },
         "NATIVE": {
           "type": "object",
           "required": [
@@ -637,12 +584,12 @@
           },
           "additionalProperties": false
         },
-        "OfferItem": {
+        "Offer": {
           "type": "object",
           "required": [
             "end_amount",
             "item",
-            "item_type",
+            "offerer",
             "start_amount"
           ],
           "properties": {
@@ -654,8 +601,8 @@
             "item": {
               "$ref": "#/definitions/Asset"
             },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
+            "offerer": {
+              "$ref": "#/definitions/Addr"
             },
             "start_amount": {
               "type": "integer",
@@ -669,35 +616,26 @@
           "type": "object",
           "required": [
             "consideration",
+            "end_time",
             "offer",
-            "offerer",
-            "order_id"
+            "order_id",
+            "start_time"
           ],
           "properties": {
             "consideration": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/ConsiderationItem"
+                "$ref": "#/definitions/Consideration"
               }
             },
             "end_time": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/definitions/Expiration"
             },
             "offer": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/OfferItem"
+                "$ref": "#/definitions/Offer"
               }
-            },
-            "offerer": {
-              "$ref": "#/definitions/Addr"
             },
             "order_id": {
               "type": "array",
@@ -716,14 +654,7 @@
               "minItems": 3
             },
             "start_time": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/definitions/Expiration"
             }
           },
           "additionalProperties": false
@@ -748,35 +679,26 @@
       "type": "object",
       "required": [
         "consideration",
+        "end_time",
         "offer",
-        "offerer",
-        "order_id"
+        "order_id",
+        "start_time"
       ],
       "properties": {
         "consideration": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ConsiderationItem"
+            "$ref": "#/definitions/Consideration"
           }
         },
         "end_time": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/Expiration"
         },
         "offer": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/OfferItem"
+            "$ref": "#/definitions/Offer"
           }
-        },
-        "offerer": {
-          "$ref": "#/definitions/Addr"
         },
         "order_id": {
           "type": "array",
@@ -795,14 +717,7 @@
           "minItems": 3
         },
         "start_time": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "$ref": "#/definitions/Expiration"
         }
       },
       "additionalProperties": false,
@@ -869,12 +784,11 @@
           },
           "additionalProperties": false
         },
-        "ConsiderationItem": {
+        "Consideration": {
           "type": "object",
           "required": [
             "end_amount",
             "item",
-            "item_type",
             "recipient",
             "start_amount"
           ],
@@ -886,9 +800,6 @@
             },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
             },
             "recipient": {
               "$ref": "#/definitions/Addr"
@@ -948,14 +859,6 @@
             }
           ]
         },
-        "ItemType": {
-          "type": "string",
-          "enum": [
-            "n_a_t_i_v_e",
-            "c_w20",
-            "c_w721"
-          ]
-        },
         "NATIVE": {
           "type": "object",
           "required": [
@@ -992,12 +895,12 @@
           },
           "additionalProperties": false
         },
-        "OfferItem": {
+        "Offer": {
           "type": "object",
           "required": [
             "end_amount",
             "item",
-            "item_type",
+            "offerer",
             "start_amount"
           ],
           "properties": {
@@ -1009,8 +912,8 @@
             "item": {
               "$ref": "#/definitions/Asset"
             },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
+            "offerer": {
+              "$ref": "#/definitions/Addr"
             },
             "start_amount": {
               "type": "integer",
@@ -1113,12 +1016,11 @@
           },
           "additionalProperties": false
         },
-        "ConsiderationItem": {
+        "Consideration": {
           "type": "object",
           "required": [
             "end_amount",
             "item",
-            "item_type",
             "recipient",
             "start_amount"
           ],
@@ -1130,9 +1032,6 @@
             },
             "item": {
               "$ref": "#/definitions/Asset"
-            },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
             },
             "recipient": {
               "$ref": "#/definitions/Addr"
@@ -1192,14 +1091,6 @@
             }
           ]
         },
-        "ItemType": {
-          "type": "string",
-          "enum": [
-            "n_a_t_i_v_e",
-            "c_w20",
-            "c_w721"
-          ]
-        },
         "NATIVE": {
           "type": "object",
           "required": [
@@ -1236,12 +1127,12 @@
           },
           "additionalProperties": false
         },
-        "OfferItem": {
+        "Offer": {
           "type": "object",
           "required": [
             "end_amount",
             "item",
-            "item_type",
+            "offerer",
             "start_amount"
           ],
           "properties": {
@@ -1253,8 +1144,8 @@
             "item": {
               "$ref": "#/definitions/Asset"
             },
-            "item_type": {
-              "$ref": "#/definitions/ItemType"
+            "offerer": {
+              "$ref": "#/definitions/Addr"
             },
             "start_amount": {
               "type": "integer",
@@ -1268,35 +1159,26 @@
           "type": "object",
           "required": [
             "consideration",
+            "end_time",
             "offer",
-            "offerer",
-            "order_id"
+            "order_id",
+            "start_time"
           ],
           "properties": {
             "consideration": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/ConsiderationItem"
+                "$ref": "#/definitions/Consideration"
               }
             },
             "end_time": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/definitions/Expiration"
             },
             "offer": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/OfferItem"
+                "$ref": "#/definitions/Offer"
               }
-            },
-            "offerer": {
-              "$ref": "#/definitions/Addr"
             },
             "order_id": {
               "type": "array",
@@ -1315,14 +1197,7 @@
               "minItems": 3
             },
             "start_time": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/definitions/Expiration"
             }
           },
           "additionalProperties": false

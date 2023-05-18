@@ -605,7 +605,7 @@ impl MarketplaceContract<'static> {
         nft_id: &str,
         token: PaymentAsset,
         sender: &Addr,
-        receipient: &Addr,
+        recipient: &Addr,
     ) -> Vec<CosmosMsg> {
         // create empty vector of CosmosMsg
         let mut res_messages: Vec<CosmosMsg> = vec![];
@@ -650,20 +650,20 @@ impl MarketplaceContract<'static> {
             Err(_) => (None, None),
         };
 
-        // there is no royalty, creator is the receipient, or royalty amount is 0
+        // there is no royalty, creator is the recipient, or royalty amount is 0
         if creator.is_none()
-            || *creator.as_ref().unwrap() == *receipient
+            || *creator.as_ref().unwrap() == *recipient
             || royalty_amount.is_none()
             || royalty_amount.unwrap().is_zero()
         {
             match &is_native {
                 false => {
-                    // execute cw20 transfer msg from info.sender to receipient
+                    // execute cw20 transfer msg from info.sender to recipient
                     let transfer_response = WasmMsg::Execute {
                         contract_addr: deps.api.addr_validate(&token_info).unwrap().to_string(),
                         msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                             owner: sender.to_string(),
-                            recipient: receipient.to_string(),
+                            recipient: recipient.to_string(),
                             amount,
                         })
                         .unwrap(),
@@ -672,9 +672,9 @@ impl MarketplaceContract<'static> {
                     res_messages.push(transfer_response.into());
                 }
                 true => {
-                    // transfer all funds to receipient
+                    // transfer all funds to recipient
                     let transfer_response = BankMsg::Send {
-                        to_address: receipient.to_string(),
+                        to_address: recipient.to_string(),
                         amount: vec![Coin {
                             denom: token_info,
                             amount,
@@ -699,12 +699,12 @@ impl MarketplaceContract<'static> {
                     };
                     res_messages.push(transfer_token_creator_response.into());
 
-                    // execute cw20 transfer remaining funds to receipient
+                    // execute cw20 transfer remaining funds to recipient
                     let transfer_token_seller_msg = WasmMsg::Execute {
                         contract_addr: deps.api.addr_validate(&token_info).unwrap().to_string(),
                         msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                             owner: sender.to_string(),
-                            recipient: receipient.to_string(),
+                            recipient: recipient.to_string(),
                             amount: amount - royalty_amount,
                         })
                         .unwrap(),
@@ -723,9 +723,9 @@ impl MarketplaceContract<'static> {
                     };
                     res_messages.push(transfer_token_creator_response.into());
 
-                    // transfer remaining funds to receipient
+                    // transfer remaining funds to recipient
                     let transfer_token_seller_msg = BankMsg::Send {
-                        to_address: receipient.to_string(),
+                        to_address: recipient.to_string(),
                         amount: vec![Coin {
                             denom: token_info,
                             amount: amount - royalty_amount,
