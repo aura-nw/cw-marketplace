@@ -474,9 +474,7 @@ pub fn execute_settle_auction(
     // if the auction has no bid, stop the function here
     if order.consideration[0].recipient == order.offer[0].offerer {
         // delete order
-        contract()
-            .auctions
-            .remove(deps.storage, order_key)?;
+        contract().auctions.remove(deps.storage, order_key)?;
 
         return Ok(res.add_attributes([
             ("method", "settle_auction"),
@@ -505,9 +503,7 @@ pub fn execute_settle_auction(
     res = res.add_messages(payment_messages);
 
     // delete order
-    contract()
-        .auctions
-        .remove(deps.storage, order_key)?;
+    contract().auctions.remove(deps.storage, order_key)?;
 
     Ok(res.add_attributes([
         ("method", "settle_auction"),
