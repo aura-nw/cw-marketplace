@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Coin};
 use cw721::Expiration;
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 
 #[cw_serde]
 pub struct Config {
@@ -28,9 +28,6 @@ pub struct EnglishAuctionConfig {
     start_time: Expiration,
     end_time: Expiration,
 }
-
-pub type Nft = (Addr, String);
-pub type User = Addr;
 
 #[cw_serde]
 pub struct NFT {
@@ -143,6 +140,7 @@ pub struct OrderComponents {
     pub consideration: Vec<Consideration>,
     pub start_time: Expiration,
     pub end_time: Expiration,
+    pub config: String,
 }
 
 impl OrderComponents {
@@ -153,9 +151,9 @@ impl OrderComponents {
 }
 
 pub struct AuctionIndexes<'a> {
-    pub owners: MultiIndex<'a, User, OrderComponents, OrderKey>,
+    pub owners: MultiIndex<'a, Addr, OrderComponents, OrderKey>,
     pub nfts: MultiIndex<'a, (Addr, String), OrderComponents, OrderKey>,
-    pub buyers: MultiIndex<'a, User, OrderComponents, OrderKey>,
+    pub buyers: MultiIndex<'a, Addr, OrderComponents, OrderKey>,
 }
 
 impl<'a> IndexList<OrderComponents> for AuctionIndexes<'a> {
@@ -207,7 +205,3 @@ pub fn contract() -> AuctionContract<'static> {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
-
-// the auction config mapping
-pub const ENGLISH_AUCTION_STEP_PERCENTAGES: Map<OrderKey, u8> =
-    Map::new("english_auction_step_percentages");

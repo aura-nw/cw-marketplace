@@ -615,6 +615,7 @@
         "OrderComponents": {
           "type": "object",
           "required": [
+            "config",
             "consideration",
             "end_time",
             "offer",
@@ -622,6 +623,9 @@
             "start_time"
           ],
           "properties": {
+            "config": {
+              "type": "string"
+            },
             "consideration": {
               "type": "array",
               "items": {
@@ -678,6 +682,7 @@
       "title": "OrderComponents",
       "type": "object",
       "required": [
+        "config",
         "consideration",
         "end_time",
         "offer",
@@ -685,6 +690,9 @@
         "start_time"
       ],
       "properties": {
+        "config": {
+          "type": "string"
+        },
         "consideration": {
           "type": "array",
           "items": {
@@ -1158,6 +1166,7 @@
         "OrderComponents": {
           "type": "object",
           "required": [
+            "config",
             "consideration",
             "end_time",
             "offer",
@@ -1165,6 +1174,9 @@
             "start_time"
           ],
           "properties": {
+            "config": {
+              "type": "string"
+            },
             "consideration": {
               "type": "array",
               "items": {

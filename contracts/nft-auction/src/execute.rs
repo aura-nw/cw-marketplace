@@ -1,6 +1,6 @@
 use crate::state::{
     consideration_item, contract, offer_item, order_key, Asset, AuctionConfigInput,
-    OrderComponents, PaymentAsset, ENGLISH_AUCTION_STEP_PERCENTAGES, NATIVE, NFT,
+    OrderComponents, PaymentAsset, NATIVE, NFT,
 };
 use crate::ContractError;
 use cosmwasm_std::{
@@ -233,7 +233,7 @@ pub fn execute_auction_nft(
                     // create consideration item based on the auction config
                     let consideration_item = consideration_item(
                         &Asset::Native(NATIVE {
-                            denom: start_price.denom,
+                            denom: start_price.denom.clone(),
                             amount: start_price.amount.into(),
                         }),
                         &start_price.amount.into(),
@@ -245,6 +245,8 @@ pub fn execute_auction_nft(
                     let order_key =
                         order_key(&env.contract.address, &nft.contract_address, &token_id);
 
+                    let percent = step_percentage.unwrap_or(5).to_string();
+
                     // create order
                     let order = OrderComponents {
                         order_id: order_key.clone(),
@@ -252,26 +254,26 @@ pub fn execute_auction_nft(
                         consideration: vec![consideration_item],
                         start_time,
                         end_time,
+                        config: percent,
                     };
 
                     // store order
-                    contract()
-                        .auctions
-                        .save(deps.storage, order_key.clone(), &order)?;
+                    contract().auctions.save(deps.storage, order_key, &order)?;
 
-                    // save step_percentage
-                    ENGLISH_AUCTION_STEP_PERCENTAGES.save(
-                        deps.storage,
-                        order_key,
-                        &step_percentage.unwrap_or(5), // default to 5%
-                    )?;
+                    // // save step_percentage
+                    // ENGLISH_AUCTION_STEP_PERCENTAGES.save(
+                    //     deps.storage,
+                    //     order_key,
+                    //     &step_percentage.unwrap_or(5), // default to 5%
+                    // )?;
 
                     Ok(res.add_attributes([
                         ("method", "auction_nft"),
-                        ("sender", info.sender.as_str()),
+                        ("seller", info.sender.as_str()),
                         ("contract_address", nft.contract_address.as_str()),
                         ("token_id", token_id.as_str()),
                         ("start_price", start_price.amount.to_string().as_str()),
+                        ("denom", start_price.denom.as_str()),
                         (
                             "step_percentage",
                             step_percentage.unwrap_or(0).to_string().as_str(),
@@ -354,14 +356,11 @@ pub fn execute_bid_auction(
             // and we must return the previous bid_price to the previous bidder
             let previous_bidder = order.consideration[0].recipient.clone();
             if previous_bidder != order.offer[0].offerer {
+                // parse the step_percentage from order.config
+                let step_percentage = order.config.parse::<u64>().unwrap();
                 // check if the bid_price is greater than the current_price + step_price
-                let step_price = Uint128::from(current_price.amount)
-                    * Decimal::percent(
-                        ENGLISH_AUCTION_STEP_PERCENTAGES
-                            .may_load(deps.storage, order_key.clone())?
-                            .unwrap()
-                            .into(),
-                    );
+                let step_price =
+                    Uint128::from(current_price.amount) * Decimal::percent(step_percentage);
                 if bid_price < current_price.amount.checked_add(step_price.into()).unwrap() {
                     return Err(ContractError::CustomError {
                         val: ("Bidding price invalid".to_string()),
@@ -410,7 +409,7 @@ pub fn execute_bid_auction(
 
             Ok(res.add_attributes([
                 ("method", "bid_nft"),
-                ("sender", info.sender.as_str()),
+                ("buyer", info.sender.as_str()),
                 ("contract_address", nft.contract_address.as_str()),
                 ("token_id", &nft.token_id.unwrap()),
                 ("bid_price", bid_price.to_string().as_str()),
@@ -477,58 +476,45 @@ pub fn execute_settle_auction(
         // delete order
         contract()
             .auctions
-            .remove(deps.storage, order_key.clone())?;
-
-        // delete ENGLISH_AUCTION_STEP_PERCENTAGES
-        ENGLISH_AUCTION_STEP_PERCENTAGES.remove(deps.storage, order_key);
+            .remove(deps.storage, order_key)?;
 
         return Ok(res.add_attributes([
             ("method", "settle_auction"),
-            ("sender", info.sender.as_str()),
+            ("seller", order.offer[0].offerer.as_str()),
+            ("buyer", order.consideration[0].recipient.as_str()),
             ("contract_address", nft.contract_address.as_str()),
             ("token_id", &nft.token_id.unwrap()),
+            ("status", "failure"),
         ]));
     }
 
     // send the native token to the offerer
-    match &order.consideration[0].item {
-        Asset::Native(current_price) => {
-            let payment = PaymentAsset::Native {
-                denom: current_price.denom.clone(),
-                amount: current_price.amount,
-            };
 
-            let payment_messages = payment_with_royalty(
-                &deps,
-                &nft.contract_address,
-                nft.token_id.as_ref().unwrap(),
-                payment,
-                &env.contract.address,
-                &order.offer[0].offerer,
-            );
+    let payment = PaymentAsset::from(order.consideration[0].item.clone());
 
-            // loop through all payment messages and add item to response to execute
-            for payment_message in payment_messages {
-                res = res.add_message(payment_message);
-            }
+    let payment_messages = payment_with_royalty(
+        &deps,
+        &nft.contract_address,
+        nft.token_id.as_ref().unwrap(),
+        payment,
+        &env.contract.address,
+        &order.offer[0].offerer,
+    );
 
-            // delete order
-            contract()
-                .auctions
-                .remove(deps.storage, order_key.clone())?;
+    // add messages to response to execute
+    res = res.add_messages(payment_messages);
 
-            // delete ENGLISH_AUCTION_STEP_PERCENTAGES
-            ENGLISH_AUCTION_STEP_PERCENTAGES.remove(deps.storage, order_key);
+    // delete order
+    contract()
+        .auctions
+        .remove(deps.storage, order_key)?;
 
-            Ok(res.add_attributes([
-                ("method", "terminate_auction"),
-                ("sender", info.sender.as_str()),
-                ("contract_address", nft.contract_address.as_str()),
-                ("token_id", nft.token_id.unwrap().as_str()),
-            ]))
-        }
-        _ => Err(ContractError::CustomError {
-            val: ("Invalid consideration item".to_string()),
-        }),
-    }
+    Ok(res.add_attributes([
+        ("method", "settle_auction"),
+        ("seller", order.offer[0].offerer.as_str()),
+        ("buyer", order.consideration[0].recipient.as_str()),
+        ("contract_address", nft.contract_address.as_str()),
+        ("token_id", nft.token_id.unwrap().as_str()),
+        ("status", "success"),
+    ]))
 }
