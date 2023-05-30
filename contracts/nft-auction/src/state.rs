@@ -2,6 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Coin};
 use cw721::Expiration;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
+use std::string::ToString;
 
 #[cw_serde]
 pub struct Config {
@@ -12,21 +13,54 @@ pub struct Config {
 #[cw_serde]
 pub enum AuctionConfigInput {
     EnglishAuction {
-        start_price: Coin,           // require start_price to determine the denom
-        step_percentage: Option<u8>, // step_percentage is a percentage of the current price
-        buyout_price: Option<u128>,  // buyout_price is the wish price amount of the seller
+        start_price: Coin,            // require start_price to determine the denom
+        step_percentage: Option<u64>, // step_percentage is a percentage of the current price
+        buyout_price: Option<u128>,   // buyout_price is the wish price amount of the seller
+        start_time: Option<Expiration>,
+        end_time: Expiration,
+    },
+    DutchAuction {
+        start_price: Coin, // require start_price to determine the denom
+        end_price: u128,   // end_price is the minimum amount of the seller
         start_time: Option<Expiration>,
         end_time: Expiration,
     },
 }
 
+// The types of `config` in OrderComponents
 #[cw_serde]
 pub struct EnglishAuctionConfig {
-    start_price: Coin,
-    step_percentage: u8,
-    buyout_price: u128,
-    start_time: Expiration,
-    end_time: Expiration,
+    pub order_type: String,
+    pub step_percentage: u64,
+}
+
+impl From<String> for EnglishAuctionConfig {
+    fn from(config: String) -> Self {
+        serde_json::from_str(&config).unwrap()
+    }
+}
+
+impl ToString for EnglishAuctionConfig {
+    fn to_string(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+}
+
+#[cw_serde]
+pub struct DutchAuctionConfig {
+    pub order_type: String,
+}
+
+impl From<String> for DutchAuctionConfig {
+    fn from(config: String) -> Self {
+        serde_json::from_str(&config).unwrap()
+    }
+}
+
+impl ToString for DutchAuctionConfig {
+    fn to_string(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
 }
 
 #[cw_serde]
@@ -133,6 +167,7 @@ pub fn order_key(user_address: &Addr, contract_address: &Addr, token_id: &str) -
     )
 }
 
+/// the config should be in json format
 #[cw_serde]
 pub struct OrderComponents {
     pub order_id: OrderKey,
