@@ -22,42 +22,42 @@ pub enum AuctionConfigInput {
     DutchAuction {
         start_price: Coin, // require start_price to determine the denom
         end_price: u128,   // end_price is the minimum amount of the seller
-        start_time: Option<Expiration>,
-        end_time: Expiration,
+        start_time: Option<u64>,
+        end_time: u64,
     },
 }
 
 // The types of `config` in OrderComponents
 #[cw_serde]
-pub struct EnglishAuctionConfig {
-    pub order_type: String,
+pub struct EnglishAuctionMetadata {
     pub step_percentage: u64,
 }
 
-impl From<String> for EnglishAuctionConfig {
-    fn from(config: String) -> Self {
-        serde_json::from_str(&config).unwrap()
+impl From<String> for EnglishAuctionMetadata {
+    fn from(metadata: String) -> Self {
+        serde_json::from_str(&metadata).unwrap()
     }
 }
 
-impl ToString for EnglishAuctionConfig {
+impl ToString for EnglishAuctionMetadata {
     fn to_string(&self) -> String {
         serde_json::to_string(&self).unwrap()
     }
 }
 
 #[cw_serde]
-pub struct DutchAuctionConfig {
-    pub order_type: String,
+pub struct DutchAuctionMetadata {
+    pub step_amount: u128,
+    pub start_time: u64, // we need to store the start_time in u64 format to calculate the current price
 }
 
-impl From<String> for DutchAuctionConfig {
-    fn from(config: String) -> Self {
-        serde_json::from_str(&config).unwrap()
+impl From<String> for DutchAuctionMetadata {
+    fn from(metadata: String) -> Self {
+        serde_json::from_str(&metadata).unwrap()
     }
 }
 
-impl ToString for DutchAuctionConfig {
+impl ToString for DutchAuctionMetadata {
     fn to_string(&self) -> String {
         serde_json::to_string(&self).unwrap()
     }
@@ -175,7 +175,13 @@ pub struct OrderComponents {
     pub consideration: Vec<Consideration>,
     pub start_time: Expiration,
     pub end_time: Expiration,
-    pub config: String,
+    pub config: OrderConfig,
+}
+
+#[cw_serde]
+pub struct OrderConfig {
+    pub order_type: String,
+    pub metadata: String,
 }
 
 impl OrderComponents {
