@@ -268,6 +268,7 @@ pub fn execute_auction_nft(
 
                     Ok(res.add_attributes([
                         ("method", "auction_nft"),
+                        ("type", "english_auction"),
                         ("seller", info.sender.as_str()),
                         ("contract_address", nft.contract_address.as_str()),
                         ("token_id", token_id.as_str()),
@@ -408,6 +409,7 @@ pub fn execute_auction_nft(
 
                     Ok(res.add_attributes([
                         ("method", "auction_nft"),
+                        ("type", "duch_auction"),
                         ("seller", info.sender.as_str()),
                         ("contract_address", nft.contract_address.as_str()),
                         ("token_id", token_id.as_str()),
@@ -549,10 +551,12 @@ pub fn execute_bid_auction(
 
                 Ok(res.add_attributes([
                     ("method", "bid_nft"),
+                    ("type", "english_auction"),
                     ("buyer", info.sender.as_str()),
                     ("contract_address", nft.contract_address.as_str()),
                     ("token_id", &nft.token_id.unwrap()),
                     ("bid_price", bid_price.to_string().as_str()),
+                    ("end_time", new_order.end_time.to_string().as_str()),
                 ]))
             } else if order.config.order_type == "dutch_auction" {
                 // if the type of order is dutch_auction
@@ -620,6 +624,7 @@ pub fn execute_bid_auction(
 
                 Ok(res.add_attributes([
                     ("method", "bid_nft"),
+                    ("type", "duch_auction"),
                     ("buyer", info.sender.as_str()),
                     ("contract_address", nft.contract_address.as_str()),
                     ("token_id", &nft.token_id.unwrap()),
