@@ -35,13 +35,13 @@ pub struct EnglishAuctionMetadata {
 
 impl From<String> for EnglishAuctionMetadata {
     fn from(metadata: String) -> Self {
-        serde_json::from_str(&metadata).unwrap()
+        serde_json_wasm::from_str(&metadata).unwrap()
     }
 }
 
 impl ToString for EnglishAuctionMetadata {
     fn to_string(&self) -> String {
-        serde_json::to_string(&self).unwrap()
+        serde_json_wasm::to_string(&self).unwrap()
     }
 }
 
@@ -53,13 +53,13 @@ pub struct DutchAuctionMetadata {
 
 impl From<String> for DutchAuctionMetadata {
     fn from(metadata: String) -> Self {
-        serde_json::from_str(&metadata).unwrap()
+        serde_json_wasm::from_str(&metadata).unwrap()
     }
 }
 
 impl ToString for DutchAuctionMetadata {
     fn to_string(&self) -> String {
-        serde_json::to_string(&self).unwrap()
+        serde_json_wasm::to_string(&self).unwrap()
     }
 }
 
