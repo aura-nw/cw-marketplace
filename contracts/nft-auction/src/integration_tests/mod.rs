@@ -1,2 +1,3 @@
 #![cfg(test)]
-pub mod auction_tests;
+pub mod dutch_auction;
+pub mod english_auction;
