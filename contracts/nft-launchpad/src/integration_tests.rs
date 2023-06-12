@@ -1378,7 +1378,7 @@ mod tests {
             );
             assert_eq!(
                 res.unwrap_err().source().unwrap().to_string(),
-                "Launchpad started"
+                "Phase started"
             );
         }
 
@@ -1738,6 +1738,159 @@ mod tests {
         }
 
         #[test]
+        fn admin_can_remove_whitelist_if_phase_not_started() {
+            // get integration test app and launchpad address
+            let (mut app, launchpad_address) = create_launchpad();
+
+            // ADD FIRST PHASE to the first position
+            // prepare execute msg for adding new phase to launchpad
+            let add_first_phase_msg = ExecuteMsg::AddMintPhase {
+                after_phase_id: None,
+                phase_data: PhaseData {
+                    start_time: app.block_info().time.plus_seconds(200),
+                    end_time: app.block_info().time.plus_seconds(210),
+                    max_supply: Some(1000),
+                    max_nfts_per_address: 2,
+                    price: coin(500000, NATIVE_DENOM),
+                    is_public: false,
+                },
+            };
+
+            // execute add new phase msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_first_phase_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // ADD SECOND PHASE to the first position
+            // prepare execute msg for adding new phase to launchpad
+            let add_second_phase_msg = ExecuteMsg::AddMintPhase {
+                after_phase_id: Some(1),
+                phase_data: PhaseData {
+                    start_time: app.block_info().time.plus_seconds(300),
+                    end_time: app.block_info().time.plus_seconds(1200),
+                    max_supply: Some(1000),
+                    max_nfts_per_address: 2,
+                    price: coin(500000, NATIVE_DENOM),
+                    is_public: false,
+                },
+            };
+
+            // execute add new phase msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_second_phase_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // prepare execute msg for adding new whitelist to launchpad
+            let add_whitelist_msg = ExecuteMsg::AddWhitelist {
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                phase_id: 1,
+            };
+
+            // execute add new whitelist msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_whitelist_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // prepare execute msg for removing whitelist from launchpad
+            let remove_whitelist_msg = ExecuteMsg::RemoveWhitelist {
+                addresses: [USER_1.to_string()].to_vec(),
+                phase_id: 1,
+            };
+
+            // execute remove whitelist msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &remove_whitelist_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // increase time to start the phase
+            // change block time increase 400 seconds to make phase active
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(211),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // prepare execute msg for adding new whitelist to launchpad
+            let add_whitelist_msg = ExecuteMsg::AddWhitelist {
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                phase_id: 1,
+            };
+
+            // execute add new whitelist msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_whitelist_msg,
+                &[],
+            );
+            assert_eq!(
+                res.unwrap_err().source().unwrap().to_string(),
+                "Phase started"
+            );
+
+            // prepare execute msg for adding new whitelist to launchpad
+            let add_whitelist_msg = ExecuteMsg::AddWhitelist {
+                whitelists: [ADMIN.to_string(), USER_1.to_string()].to_vec(),
+                phase_id: 2,
+            };
+
+            // admin active the launchpad
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &ExecuteMsg::ActivateLaunchpad {},
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // execute add new whitelist msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &add_whitelist_msg,
+                &[],
+            );
+            assert_eq!(
+                res.unwrap_err().source().unwrap().to_string(),
+                "Phase started"
+            );
+
+            // admin deactive the launchpad
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address.clone()),
+                &ExecuteMsg::DeactivateLaunchpad {},
+                &[],
+            );
+            assert!(res.is_ok());
+
+            // execute add new whitelist msg
+            let res = app.execute_contract(
+                Addr::unchecked(ADMIN),
+                Addr::unchecked(launchpad_address),
+                &add_whitelist_msg,
+                &[],
+            );
+            assert!(res.is_ok());
+        }
+
+        #[test]
         fn cannot_remove_whitelist_because_the_launchpad_started() {
             // get integration test app and launchpad address
             let (mut app, launchpad_address) = create_launchpad();
@@ -1805,7 +1958,7 @@ mod tests {
             );
             assert_eq!(
                 res.unwrap_err().source().unwrap().to_string(),
-                "Launchpad started"
+                "Phase started"
             );
         }
 

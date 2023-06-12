@@ -30,6 +30,9 @@ pub enum ContractError {
     #[error("Launchpad started")]
     LaunchpadStarted {},
 
+    #[error("Phase started")]
+    PhaseStarted {},
+
     #[error("Launchpad is already deactivated")]
     LaunchpadIsDeactivated {},
 
