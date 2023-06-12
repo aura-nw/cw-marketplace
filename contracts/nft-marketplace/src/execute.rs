@@ -416,6 +416,14 @@ impl MarketplaceContract<'static> {
     ) -> Result<Response, ContractError> {
         let contract_address = nft.contract_address;
         let token_id = nft.token_id;
+
+        // cannot accept own offer
+        if info.sender == offerer {
+            return Err(ContractError::CustomError {
+                val: ("Cannot accept own offer".to_string()),
+            });
+        }
+
         // if the token_id is exist, then this order is offer for a specific nft
         if let Some(token_id) = token_id {
             // generate order key for order components based on user address, contract address and token id
@@ -430,6 +438,7 @@ impl MarketplaceContract<'static> {
                     val: ("Offer is expired".to_string()),
                 });
             }
+
             match &order_components.consideration[0].item {
                 // match if the consideration item is Nft
                 Asset::Nft(NFT {

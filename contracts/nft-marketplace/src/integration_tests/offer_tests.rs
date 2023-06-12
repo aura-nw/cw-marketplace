@@ -610,4 +610,83 @@ mod accept_offer {
 
         assert_eq!(res.balance, Uint128::from(MOCK_OFFER_CW20_PRICE));
     }
+
+    #[test]
+    fn cannot_accept_offer_of_owned_nft() {
+        // get integration test app and contracts
+        let (mut app, contracts) = instantiate_contracts();
+        let cw2981_address = contracts[0].contract_addr.clone();
+        let marketplace_address = contracts[1].contract_addr.clone();
+        let cw20_address = contracts[2].contract_addr.clone();
+
+        // prepare mint cw2981 message to OWNER
+        mint_nft(
+            &mut app,
+            MOCK_OFFER_NFT_TOKEN_ID_1,
+            OWNER,
+            cw2981_address.clone(),
+        );
+
+        // execute mint function to convert native token to twilight token
+        let _response = app
+            .execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked(cw20_address),
+                &cw20::Cw20ExecuteMsg::Mint {
+                    recipient: USER_1.to_string(),
+                    amount: Uint128::from(100000000u128),
+                },
+                &[Coin {
+                    amount: Uint128::from(100000000u128),
+                    denom: NATIVE_DENOM.to_string(),
+                }],
+            )
+            .unwrap();
+
+        let res = create_offer(
+            &mut app,
+            MOCK_OFFER_NFT_TOKEN_ID_1,
+            USER_1,
+            cw2981_address.clone(),
+            marketplace_address.clone(),
+        );
+        assert!(res.is_ok());
+
+        // transfer nft token to USER_1
+        let transfer_msg: Cw721ExecuteMsg<Metadata, Metadata> = Cw721ExecuteMsg::TransferNft {
+            recipient: USER_1.to_string(),
+            token_id: MOCK_OFFER_NFT_TOKEN_ID_1.to_string(),
+        };
+
+        // OWNER transfers nft token to USER_1
+        let res = app.execute_contract(
+            Addr::unchecked(OWNER),
+            Addr::unchecked(cw2981_address.clone()),
+            &transfer_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // prepare message for USER_1 accepts offer
+        let accept_offer_msg = ExecuteMsg::AcceptNftOffer {
+            offerer: USER_1.to_string(),
+            nft: NFT {
+                contract_address: Addr::unchecked(cw2981_address),
+                token_id: Some(MOCK_OFFER_NFT_TOKEN_ID_1.to_string()),
+            },
+            funds_amount: MOCK_OFFER_CW20_PRICE,
+        };
+
+        // USER_1 accepts offer
+        let res = app.execute_contract(
+            Addr::unchecked(USER_1.to_string()),
+            Addr::unchecked(marketplace_address),
+            &accept_offer_msg,
+            &[],
+        );
+        assert_eq!(
+            res.unwrap_err().source().unwrap().to_string(),
+            "Custom Error val: \"Cannot accept own offer\""
+        );
+    }
 }
