@@ -565,7 +565,7 @@ pub fn execute_bid_auction(
                     DutchAuctionMetadata::from(order.config.metadata.clone());
 
                 let bidding_price = Uint128::from(current_price.amount)
-                    .checked_add(
+                    .checked_sub(
                         (Uint128::from(env.block.time.nanos() - dutch_auction_metadata.start_time))
                             .checked_div(Uint128::from(60_000_000_000u128))
                             .unwrap()
