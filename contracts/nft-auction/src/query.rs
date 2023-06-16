@@ -148,10 +148,10 @@ pub fn query_valid_price(
                             .unwrap(),
                         )
                         .unwrap();
-                    return Ok(bidding_price.into());
+                    Ok(bidding_price.into())
                 } else {
                     // if type is BlindAuction, return 0
-                    return Ok(0u128);
+                    Ok(0u128)
                 }
             }
             _ => {
