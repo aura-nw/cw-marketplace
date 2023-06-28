@@ -507,9 +507,9 @@ pub fn add_whitelist(
     phase_id: u64,
     whitelists: Vec<String>,
 ) -> Result<Response, ContractError> {
-    // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, &env) {
-        return Err(ContractError::LaunchpadStarted {});
+    // check if the phase started, then return error
+    if is_phase_started(deps.storage, &env, phase_id) {
+        return Err(ContractError::PhaseStarted {});
     }
 
     // check if the sender is not the owner, then return error
@@ -540,9 +540,9 @@ pub fn remove_whitelist(
     phase_id: u64,
     addresses: Vec<String>,
 ) -> Result<Response, ContractError> {
-    // check if the launchpad started, then return error
-    if is_launchpad_started(deps.storage, &env) {
-        return Err(ContractError::LaunchpadStarted {});
+    // check if the phase started, then return error
+    if is_phase_started(deps.storage, &env, phase_id) {
+        return Err(ContractError::PhaseStarted {});
     }
 
     // check if the sender is not the owner, then return error
@@ -967,6 +967,21 @@ fn is_launchpad_started(storage: &dyn Storage, env: &Env) -> bool {
 
         // check if the current time is less than the start time of the real first phase config
         (env.block.time >= real_first_phase_config.start_time) || launchpad_info.is_active
+    } else {
+        launchpad_info.is_active
+    }
+}
+
+// we need a function to check when the launchpad started
+fn is_phase_started(storage: &dyn Storage, env: &Env, phase_id: u64) -> bool {
+    // load the status of the launchpad
+    let launchpad_info = LAUNCHPAD_INFO.load(storage).unwrap();
+
+    if PHASE_CONFIGS.may_load(storage, phase_id).is_ok() {
+        // load the current phase config
+        let current_phase_config = PHASE_CONFIGS.load(storage, phase_id).unwrap();
+
+        (env.block.time >= current_phase_config.start_time) || launchpad_info.is_active
     } else {
         launchpad_info.is_active
     }
