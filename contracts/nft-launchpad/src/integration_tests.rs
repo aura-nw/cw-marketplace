@@ -847,7 +847,7 @@ mod tests {
 
             assert_eq!(phase_config_info.len(), 1);
             assert_eq!(phase_config_info[0].phase_id, 1);
-            assert_eq!(phase_config_info[0].max_supply.unwrap(), 2000);
+            assert_eq!(phase_config_info[0].max_supply, 2000);
         }
 
         #[test]

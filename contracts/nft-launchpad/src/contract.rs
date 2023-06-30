@@ -270,7 +270,7 @@ fn add_mint_phase(
                 max_supply: phase_data.max_supply,
                 total_supply: 0,
                 max_nfts_per_address: phase_data.max_nfts_per_address,
-                price: phase_data.price,
+                price: phase_data.price.clone(),
                 is_public: phase_data.is_public,
             };
             PHASE_CONFIGS.save(deps.storage, valid_phase_id, &phase_config_data)?;
@@ -321,7 +321,7 @@ fn add_mint_phase(
                 max_supply: phase_data.max_supply,
                 total_supply: 0,
                 max_nfts_per_address: phase_data.max_nfts_per_address,
-                price: phase_data.price,
+                price: phase_data.price.clone(),
                 is_public: phase_data.is_public,
             };
             PHASE_CONFIGS.save(deps.storage, valid_phase_id, &phase_config_data)?;
@@ -338,7 +338,26 @@ fn add_mint_phase(
         }
     }
 
-    Ok(Response::new())
+    Ok(Response::new().add_attributes([
+        ("action", "add_mint_phase"),
+        ("phase_id", &valid_phase_id.to_string()),
+        ("start_time", &phase_data.start_time.to_string()),
+        ("end_time", &phase_data.end_time.to_string()),
+        (
+            "max_supply",
+            &phase_data
+                .max_supply
+                .unwrap_or(launchpad_info.max_supply)
+                .to_string(),
+        ),
+        (
+            "max_nfts_per_address",
+            &phase_data.max_nfts_per_address.to_string(),
+        ),
+        ("price_amount", &phase_data.price.amount.to_string()),
+        ("price_denom", &phase_data.price.denom),
+        ("is_public", &phase_data.is_public.to_string()),
+    ]))
 }
 
 // update the mint phase with the phase_id
@@ -402,12 +421,20 @@ pub fn update_mint_phase(
         ("phase_id", &phase_id.to_string()),
         ("start_time", &phase_data.start_time.to_string()),
         ("end_time", &phase_data.end_time.to_string()),
-        // ("max_supply", Some(&phase_data.max_supply).unwrap()),
+        (
+            "max_supply",
+            &phase_data
+                .max_supply
+                .unwrap_or(LAUNCHPAD_INFO.load(deps.storage).unwrap().max_supply)
+                .to_string(),
+        ),
         (
             "max_nfts_per_address",
             &phase_data.max_nfts_per_address.to_string(),
         ),
+        ("price_amount", &phase_data.price.amount.to_string()),
         ("price_denom", &phase_data.price.denom),
+        ("is_public", &phase_data.is_public.to_string()),
     ]))
 }
 
@@ -1002,8 +1029,10 @@ pub fn query_launchpad_info(deps: Deps) -> StdResult<LaunchpadInfo> {
 }
 
 pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>> {
+    let launchpad_info = LAUNCHPAD_INFO.load(deps.storage).unwrap();
+
     // load the last_phase_id
-    let last_phase_id = LAUNCHPAD_INFO.load(deps.storage).unwrap().last_phase_id;
+    let last_phase_id = launchpad_info.last_phase_id;
 
     let mut phase_id = 0;
 
@@ -1027,7 +1056,7 @@ pub fn query_all_phase_configs(deps: Deps) -> StdResult<Vec<PhaseConfigResponse>
             phase_id,
             start_time: phase_config.start_time,
             end_time: phase_config.end_time,
-            max_supply: phase_config.max_supply,
+            max_supply: phase_config.max_supply.unwrap_or(launchpad_info.max_supply),
             total_supply: phase_config.total_supply,
             max_nfts_per_address: phase_config.max_nfts_per_address,
             price: phase_config.price,
