@@ -149,7 +149,48 @@
                       "integer",
                       "null"
                     ],
-                    "format": "uint8",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "dutch_auction"
+            ],
+            "properties": {
+              "dutch_auction": {
+                "type": "object",
+                "required": [
+                  "end_price",
+                  "end_time",
+                  "start_price"
+                ],
+                "properties": {
+                  "end_price": {
+                    "type": "integer",
+                    "format": "uint128",
+                    "minimum": 0.0
+                  },
+                  "end_time": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  },
+                  "start_price": {
+                    "$ref": "#/definitions/Coin"
+                  },
+                  "start_time": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "format": "uint64",
                     "minimum": 0.0
                   }
                 },
@@ -613,6 +654,7 @@
           "additionalProperties": false
         },
         "OrderComponents": {
+          "description": "the config should be in json format",
           "type": "object",
           "required": [
             "config",
@@ -624,7 +666,7 @@
           ],
           "properties": {
             "config": {
-              "type": "string"
+              "$ref": "#/definitions/OrderConfig"
             },
             "consideration": {
               "type": "array",
@@ -663,6 +705,22 @@
           },
           "additionalProperties": false
         },
+        "OrderConfig": {
+          "type": "object",
+          "required": [
+            "metadata",
+            "order_type"
+          ],
+          "properties": {
+            "metadata": {
+              "type": "string"
+            },
+            "order_type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "Timestamp": {
           "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
           "allOf": [
@@ -680,6 +738,7 @@
     "nft_auction": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "OrderComponents",
+      "description": "the config should be in json format",
       "type": "object",
       "required": [
         "config",
@@ -691,7 +750,7 @@
       ],
       "properties": {
         "config": {
-          "type": "string"
+          "$ref": "#/definitions/OrderConfig"
         },
         "consideration": {
           "type": "array",
@@ -931,6 +990,22 @@
           },
           "additionalProperties": false
         },
+        "OrderConfig": {
+          "type": "object",
+          "required": [
+            "metadata",
+            "order_type"
+          ],
+          "properties": {
+            "metadata": {
+              "type": "string"
+            },
+            "order_type": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
         "Timestamp": {
           "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
           "allOf": [
@@ -1164,6 +1239,7 @@
           "additionalProperties": false
         },
         "OrderComponents": {
+          "description": "the config should be in json format",
           "type": "object",
           "required": [
             "config",
@@ -1175,7 +1251,7 @@
           ],
           "properties": {
             "config": {
-              "type": "string"
+              "$ref": "#/definitions/OrderConfig"
             },
             "consideration": {
               "type": "array",
@@ -1210,6 +1286,22 @@
             },
             "start_time": {
               "$ref": "#/definitions/Expiration"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderConfig": {
+          "type": "object",
+          "required": [
+            "metadata",
+            "order_type"
+          ],
+          "properties": {
+            "metadata": {
+              "type": "string"
+            },
+            "order_type": {
+              "type": "string"
             }
           },
           "additionalProperties": false

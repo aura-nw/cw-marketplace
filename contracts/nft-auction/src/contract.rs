@@ -6,7 +6,9 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::execute::{execute_auction_nft, execute_bid_auction, execute_settle_auction};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::query::{query_buyer_auctions, query_nft_auction, query_owner_auctions};
+use crate::query::{
+    query_buyer_auctions, query_nft_auction, query_owner_auctions, query_valid_price,
+};
 use crate::state::{Config, CONFIG};
 
 // version info for migration info
@@ -89,6 +91,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&buyer)?,
             start_after_nft,
             limit,
+        )?),
+        QueryMsg::ValidPrice {
+            contract_address,
+            token_id,
+        } => to_binary(&query_valid_price(
+            deps,
+            env,
+            api.addr_validate(&contract_address)?,
+            token_id,
         )?),
     }
 }

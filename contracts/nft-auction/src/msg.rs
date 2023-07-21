@@ -52,6 +52,12 @@ pub enum QueryMsg {
         start_after_nft: Option<NFT>,
         limit: Option<u32>,
     },
+    // get a valid price for bidding of a nft
+    #[returns(u128)]
+    ValidPrice {
+        contract_address: String,
+        token_id: String,
+    },
 }
 
 #[cw_serde]

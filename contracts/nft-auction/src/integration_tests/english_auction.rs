@@ -18,7 +18,7 @@ const TOKEN_ID_2: &str = "token2";
 const TOKEN_ID_3: &str = "token3";
 
 const START_PRICE: u128 = 10000000;
-const STEP_PERCENTAGE: u8 = 5;
+const STEP_PERCENTAGE: u64 = 5;
 
 fn mint_nft(app: &mut App, token_id: &str, owner: &str, cw2981_address: String) {
     let mint_msg: Cw721ExecuteMsg<Metadata, Metadata> = Cw721ExecuteMsg::Mint(MintMsg {

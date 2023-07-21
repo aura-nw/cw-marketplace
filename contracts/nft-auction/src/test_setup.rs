@@ -173,9 +173,9 @@ pub mod env {
             contract_code_id: cw2981_contract_code_id,
         });
 
-        // NFT Marketplace contract
+        // Aucction contract
         // store the code of all contracts to the app and get the code ids
-        let marketplace_contract_code_id = app.store_code(nft_auction_contract_template());
+        let auction_contract_code_id = app.store_code(nft_auction_contract_template());
 
         // create instantiate message for contract
         let msg = InstantiateMsg {
@@ -183,21 +183,21 @@ pub mod env {
         };
 
         // instantiate contract
-        let marketplace_contract_addr = app
+        let auction_contract_addr = app
             .instantiate_contract(
-                marketplace_contract_code_id,
+                auction_contract_code_id,
                 Addr::unchecked(OWNER),
                 &msg,
                 &[],
-                "test instantiate marketplace contract",
+                "test instantiate auction contract",
                 None,
             )
             .unwrap();
 
         // add contract info to the vector
         contract_info_vec.push(ContractInfo {
-            contract_addr: marketplace_contract_addr.to_string(),
-            contract_code_id: marketplace_contract_code_id,
+            contract_addr: auction_contract_addr.to_string(),
+            contract_code_id: auction_contract_code_id,
         });
 
         // return the app instance, the addresses and code IDs of all contracts
