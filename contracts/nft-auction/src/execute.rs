@@ -413,6 +413,7 @@ pub fn execute_bid_auction(
                 ("contract_address", nft.contract_address.as_str()),
                 ("token_id", &nft.token_id.unwrap()),
                 ("bid_price", bid_price.to_string().as_str()),
+                ("end_time", new_order.end_time.to_string().as_str()),
             ]))
         }
         _ => Err(ContractError::CustomError {
