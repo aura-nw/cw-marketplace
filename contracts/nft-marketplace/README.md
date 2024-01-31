@@ -70,7 +70,7 @@ Owner of a listing can cancel that listing at any time. Transaction message form
 
 #### Offer to buy an NFT
 
-Users can offer to buy NFTs from other users. We require offerers to use cw20 token to offer so that in the case the offer is accepted, the marketplace contract can automatically transfer both the NFT to the offerer and tokens to the NFT owner. For safety reasons, we do not lock offerer's token so there can be cases when an offer is accepted but the offerer doesn't have enough tokens which makes the offer invalid. We expect the marketplace frontend will take care of this case and notify NFT owners.
+Users can offer to buy NFTs from other users. We require offerers to use cw20 token to offer so that in the case the offer is accepted, the marketplace contract can automatically transfer both the NFT to the offerer and tokens to the NFT owner. For safety reasons, we do not lock offerer's token so there can be cases when an offer is accepted but the offerer doesn't have enough tokens which makes the offer invalid. We expect the marketplace frontend will take care of this case and notify NFT owners. At the moment, we use our [bidding-token](../bidding-token/README.md) for this feature.
 
 Offer message format:
 ```json

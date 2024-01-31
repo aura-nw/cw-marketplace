@@ -131,7 +131,16 @@ graph TD
   Launchpad -- 4.b. mint_to_user   --> Collection
 ```
 
-Current version of the launchpad uses a simple procedure for generating random NFT IDs. It is verifiable but not a true random number. For example, block proposer could manipulate the result by changing the order of executing mint transactions. However, given the low block time of Cosmos chain in general, it is mostly sufficient for 
+Current version of the launchpad uses a simple procedure for generating random NFT IDs. It is verifiable but not a true random number. For example, block proposer could manipulate the result by changing the order of executing mint transactions. However, given the low block time of Cosmos chain in general, it is sufficient for usecases such as NFT artworks or PFP.
+
+## Official deployed contracts on Aura Network
+
+We have deployed our marketplace and auction contracts on Aura Network.
+| Name            | Address                                                         | Admin                                       |
+|-----------------|-----------------------------------------------------------------|---------------------------------------------|
+| nft-marketplace | aura1qeyjez6a9dwlghf9d6cy44fxmsajztw257586akk6xn6k88x0gusw9pczh | aura12jlwy5ua9gct7a7au4vgeskawgl6wkwve74nwj |
+| nft-auction     | aura1w6dzjdv09529qmxslyjkemwd7tucp29gf86e25fc0zwpn54sl99s0dtavg | aura12jlwy5ua9gct7a7au4vgeskawgl6wkwve74nwj |
+| bidding-token   | aura1yvgh8xeju5dyr0zxlkvq09htvhjj20fncp5g58np4u25g8rkpgjssq2fp2 | aura12jlwy5ua9gct7a7au4vgeskawgl6wkwve74nwj |
 
 ## Contributing
 
