@@ -22,6 +22,19 @@ impl InstantiateMsg {
     }
 }
 
+#[cw_serde]
+pub struct MarketplaceInfo {
+    pub contract_address: String,
+}
+
+#[cw_serde]
+pub struct SupportedNative {
+    pub denom: String,
+}
+
+pub const MARKETPLACE_INFO: Item<MarketplaceInfo> = Item::new("marketplace_info");
+pub const SUPPORTED_NATIVE: Item<SupportedNative> = Item::new("supported_native");
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -44,16 +57,3 @@ mod test {
         assert_eq!(msg.get_cap(), Some(Uint128::from(1u128)))
     }
 }
-
-#[cw_serde]
-pub struct MarketplaceInfo {
-    pub contract_address: String,
-}
-
-#[cw_serde]
-pub struct SupportedNative {
-    pub denom: String,
-}
-
-pub const MARKETPLACE_INFO: Item<MarketplaceInfo> = Item::new("marketplace_info");
-pub const SUPPORTED_NATIVE: Item<SupportedNative> = Item::new("supported_native");
